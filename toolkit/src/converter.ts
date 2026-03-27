@@ -57,7 +57,7 @@ export class WeChatConverter {
     markdownText = this.stripH1(markdownText);
 
     let html = this.md.render(markdownText);
-    const $ = cheerio.load(html, { decodeEntities: false });
+    const $ = cheerio.load(html);
 
     this.enhanceCodeBlocks($);
     const images = this.processImages($);
@@ -230,7 +230,7 @@ export class WeChatConverter {
   }
 
   private generateDigest(html: string, maxBytes = 120): string {
-    const $ = cheerio.load(html, { decodeEntities: false });
+    const $ = cheerio.load(html);
     let text = $.text().replace(/\s+/g, ' ').trim();
 
     const ellipsis = '...';
