@@ -55,12 +55,11 @@ export async function getAccessToken(
 export async function uploadImage(accessToken: string, imagePath: string): Promise<string> {
   const url = `https://api.weixin.qq.com/cgi-bin/media/uploadimg?access_token=${accessToken}`;
 
-  const file = Bun?.file?.(imagePath) ?? await import('node:fs').then(fs => fs.readFileSync(imagePath));
-  const formData = new FormData();
-
-  // 使用 Node.js File API
   const buffer = await import('node:fs/promises').then(fs => fs.readFile(imagePath));
-  const blob = new Blob([buffer]);
+  const ext = basename(imagePath).split('.').pop()?.toLowerCase() || 'jpg';
+  const mimeMap: Record<string, string> = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif', webp: 'image/webp' };
+  const blob = new Blob([buffer], { type: mimeMap[ext] || 'image/jpeg' });
+  const formData = new FormData();
   formData.append('media', blob, basename(imagePath));
 
   const resp = await fetch(url, { method: 'POST', body: formData });
@@ -76,10 +75,12 @@ export async function uploadImage(accessToken: string, imagePath: string): Promi
 }
 
 export async function uploadThumb(accessToken: string, imagePath: string): Promise<string> {
-  const url = `https://api.weixin.qq.com/cgi-bin/material/add_material?access_token=${accessToken}&type=image`;
+  const url = `https://api.weixin.qq.com/cgi-bin/material/add_material?access_token=${accessToken}&type=thumb`;
 
   const buffer = await import('node:fs/promises').then(fs => fs.readFile(imagePath));
-  const blob = new Blob([buffer]);
+  const ext = basename(imagePath).split('.').pop()?.toLowerCase() || 'jpg';
+  const mimeMap: Record<string, string> = { jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', gif: 'image/gif', webp: 'image/webp' };
+  const blob = new Blob([buffer], { type: mimeMap[ext] || 'image/jpeg' });
   const formData = new FormData();
   formData.append('media', blob, basename(imagePath));
 
