@@ -1,0 +1,18 @@
+# YouMind WeChat Skill Configuration
+
+# WeChat API credentials
+wechat:
+  appid: "wx_your_appid"
+  secret: "your_secret"
+  author: "YouMind"
+
+# Default theme settings
+theme: "simple"             # simple | center | decoration | prominent
+theme_color: "#3498db"      # Any HEX color or preset name
+
+# Image generation (for cover & article images)
+image:
+  provider: "doubao"        # doubao | openai
+  api_key: "your_api_key"
+  # model: "doubao-seedream-5-0-260128"  # optional override
+  # base_url: "https://ark.cn-beijing.volces.com/api/v3"  # optional override
