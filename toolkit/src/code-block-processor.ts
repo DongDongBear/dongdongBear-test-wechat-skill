@@ -140,7 +140,7 @@ function macosHeader(): string {
   const dotsHtml = dots
     .map(
       (d) =>
-        `<span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: ${d.color}; margin-right: 8px;"></span>`
+        `<span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: ${d.color}; margin-right: 8px; font-size: 0; line-height: 0; overflow: hidden;">&nbsp;</span>`
     )
     .join('');
 
