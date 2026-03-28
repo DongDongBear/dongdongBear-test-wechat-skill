@@ -84,5 +84,31 @@ If `config.yaml` does not exist when the skill triggers:
 2. Ask the user for WeChat `appid` and `secret` (required for publishing)
 3. Ask about optional integrations: YouMind API key, image generation provider keys
 4. Run `cd toolkit && npm install` if `node_modules/` is missing
+5. **Configure WeChat IP whitelist** (required for API access — see below)
 
 Store the configuration once; never ask again.
+
+### WeChat IP Whitelist Configuration
+
+The WeChat Official Account API **rejects all requests from IPs not on the whitelist**. This must be configured before publishing can work.
+
+**Step 1 — Get the user's public IP:**
+
+```bash
+curl -s https://httpbin.org/ip | python3 -c "import sys,json; print(json.load(sys.stdin)['origin'])"
+```
+
+Run this command and show the IP to the user.
+
+**Step 2 — Add IP to WeChat whitelist:**
+
+Guide the user to:
+
+1. Open [WeChat Official Account Console](https://mp.weixin.qq.com) → Settings & Development → Basic Configuration
+2. Find the **IP Whitelist** section
+3. Click Edit, add the IP from Step 1
+4. Save
+
+> **Note:** If the user's IP is dynamic (common for home networks), it may change periodically. When publishing suddenly fails with an IP-related error, re-run the curl command and update the whitelist.
+>
+> Cloud servers and CI/CD environments typically have static IPs — configure once and forget.

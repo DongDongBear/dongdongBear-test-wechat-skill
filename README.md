@@ -27,13 +27,17 @@ pip install -r requirements.txt
 cp config.example.yaml config.yaml
 # 编辑 config.yaml 填入 WeChat API 凭证
 
-# 5. 校验 skill 结构和文档是否一致
+# 5. 获取本机公网 IP 并添加到微信 IP 白名单
+curl -s https://httpbin.org/ip | python3 -c "import sys,json; print(json.load(sys.stdin)['origin'])"
+# 将输出的 IP 填入：mp.weixin.qq.com → 设置与开发 → 基本配置 → IP 白名单
+
+# 6. 校验 skill 结构和文档是否一致
 cd toolkit && npm run validate-skill
 
-# 6. 预览
+# 7. 预览
 node dist/cli.js preview ../article.md --theme decoration --color "#9b59b6"
 
-# 7. 发布
+# 8. 发布
 node dist/cli.js publish ../article.md --theme simple --color "#3498db"
 ```
 
