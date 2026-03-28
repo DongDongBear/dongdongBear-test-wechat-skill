@@ -25,7 +25,81 @@ Before writing a single word, complete this mental process (inside `<thinking>` 
 5. **Strongest objection:** If someone disagrees, what's their best argument? (Include it in the article.)
 6. **One image:** What single concrete scene captures the essence? Start there.
 
+7. **The $1000 bet:** If you had to bet $1000 on your main claim, would you? If not, you don't believe it enough to write about it. Find the version you DO believe.
+8. **Information asymmetry:** What do you know (or can find out) about this topic that 95% of readers don't? If the answer is "nothing," either research harder or pick a different topic.
+
 Then write from that place. Let the thinking infuse the writing naturally — do NOT transcribe the checklist.
+
+---
+
+## Depth Architecture — The #1 Quality Problem
+
+Good form with shallow content is WORSE than rough form with genuine insight. Readers forgive clumsy writing if the ideas are real. They never forgive polished emptiness. This section exists because Claude's default failure mode is "impressive-sounding content that says nothing new."
+
+### The "So What?" Ladder
+
+Every insight in the article must survive THREE levels of "so what?":
+
+> **Level 1 (Observation):** "AI is getting better at coding."
+> — So what?
+> **Level 2 (Implication):** "Junior developer roles will change significantly in 2 years."
+> — So what?
+> **Level 3 (Actionable insight):** "If you're a junior dev right now, the skill that will save you isn't learning more languages — it's learning to evaluate and debug AI-generated code faster than anyone else."
+
+If your article's main insight stops at Level 1, it's a news summary. Level 2 is a decent analysis. Level 3 is what makes readers forward the article. **Every article must reach Level 3 at least once.**
+
+### First-Principles Decomposition
+
+Before accepting the "common framing" of any topic, decompose it:
+
+1. **What is everyone assuming?** (The implicit premise nobody questions)
+2. **Is that assumption actually true?** (Often it's not — or it's only true in specific contexts)
+3. **What happens if you flip it?** (The contrarian take — but only if you can defend it)
+4. **What's the second-order effect nobody's talking about?** (Most articles cover first-order effects. The depth is in second and third-order.)
+
+**Example:**
+- Common take: "Remote work increases productivity"
+- Assumption: "Productivity" means "output per hour"
+- Flip: What if remote work increases hourly output but destroys the accidental conversations that generate new ideas? Then remote work is "productive" in the spreadsheet sense but corrosive in the innovation sense.
+- Second-order: Companies that go full remote might out-execute in the short term but lose their creative edge in 3-5 years. The companies that thrive will be the ones that solve for BOTH.
+
+That's a Level 3 insight. The generic article stops at "remote work is great/terrible."
+
+### The Depth Checklist (Run Before Step 5)
+
+After writing the draft, answer these honestly. If you answer "no" to 2+, the article needs a rewrite, not a polish:
+
+- [ ] Does the article contain at least ONE insight that would surprise someone knowledgeable in the field?
+- [ ] Can the reader take a SPECIFIC action based on this article that they could not have taken based on the top 5 Google results?
+- [ ] Does the article acknowledge and engage with the STRONGEST counterargument? (Not a strawman — the real one)
+- [ ] Is there at least one concrete, verifiable data point, personal experience, or specific example that the reader hasn't seen elsewhere?
+- [ ] If you removed the formatting, rhythm, and voice — and just read the raw IDEAS — would it still be worth reading?
+
+### Where Depth Comes From (Research Protocol)
+
+Depth doesn't come from thinking harder. It comes from KNOWING MORE. Before writing any article:
+
+1. **Mine the knowledge base first.** If the user has YouMind configured, the knowledge base is a goldmine of accumulated expertise, saved articles, and curated materials. Use `youmind-api.js search` to find relevant materials. Read them fully — don't just skim snippets. The user saved these for a reason.
+
+2. **Look for the intersection.** The most interesting insights come from connecting two fields that don't usually talk to each other. If writing about AI, pull in examples from biology, urban planning, or cooking. If writing about management, bring in game theory or evolutionary psychology.
+
+3. **Find the contradiction.** Every interesting topic has an internal contradiction. "We want efficiency AND creativity." "We want growth AND sustainability." The article should name the contradiction honestly, not pretend there's a clean solution.
+
+4. **Talk to the data.** Don't cite statistics as decoration. Interrogate them. "This study says X, but the sample was Y, which means Z might actually be more true." That's depth. Quoting a stat without questioning it is surface.
+
+5. **Use primary sources.** Secondary reporting (articles about articles) is shallow by definition. If the topic involves a research paper, read the abstract. If it involves a product launch, read the actual announcement. If it involves a public figure's quote, find the original context.
+
+### Anti-Patterns for Shallow Content
+
+**"The Beautiful Nothing":** Impeccable rhythm, vivid analogies, zero original insight. The article SOUNDS smart but says nothing the reader couldn't have gotten from the Wikipedia summary. Test: summarize the article's thesis in one sentence. If it's a truism ("AI will change the world"), the article is shallow.
+
+**"The Framework Filler":** Following the Pain-Point or Listicle framework perfectly but with generic content. "5 tips for productivity" where every tip is "set goals / take breaks / stay organized." The FRAMEWORK is a skeleton. The depth is the flesh — unique examples, counterintuitive insights, specific data.
+
+**"The Hedged Emptiness":** "This is a complex issue with many perspectives... it depends on the context... there are pros and cons." This is not balance — it's intellectual cowardice. Take a position. You can acknowledge complexity while still having an opinion.
+
+**"The Analogy Crutch":** Using 5 analogies to explain something simple, because analogies FEEL like insight. One precise analogy is powerful. Five in a row is avoiding the hard work of explaining the actual mechanism.
+
+**"The Definition Opening":** Starting with "What is X? X is defined as..." This is never, ever interesting. The reader already has a rough idea of what X is — they clicked the article to learn something NEW about it.
 
 ---
 

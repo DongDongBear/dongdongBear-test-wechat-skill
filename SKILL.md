@@ -1,45 +1,49 @@
 ---
 name: youmind-wechat-skill
 description: |
-  YouMind WeChat Official Account full-pipeline agent skill.
-  Use when: message contains 公众号/推文/微信文章/微信排版/草稿箱/选题/热搜/封面图/配图,
-  or a client name + writing task, or "write an article for [brand]", or "publish to WeChat",
-  or "format for WeChat", or "push to drafts", or "topic selection", or "trending topics".
-  Also covers: article review, cover image generation, theme preview, article stats,
-  client onboarding, style preview, re-publish, edit/polish/condense/expand articles.
-  Does NOT trigger for: generic "write an article", blog posts, emails, PPT, short video scripts,
-  non-WeChat SEO, or content not destined for WeChat Official Accounts.
+  Use when: user mentions WeChat Official Account (公众号), WeChat article (推文/微信文章),
+  WeChat formatting (微信排版), draft box (草稿箱), topic selection (选题), trending topics (热搜),
+  cover image (封面图), inline images (配图), or a client name + writing task,
+  or "write an article for [brand]", "publish to WeChat", "format for WeChat", "push to drafts".
+  Also covers: article review, theme preview, article stats, client onboarding, style preview,
+  re-publish, edit/polish/condense/expand articles.
+  Does NOT trigger for: generic "write an article" without WeChat context, blog posts,
+  emails, PPT, short video scripts, non-WeChat SEO.
 ---
 
 # YouMind WeChat Skill
 
-You are a WeChat Official Account content agent. Given a client name or article request, you run the full pipeline from topic selection through draft-box publishing — autonomously.
+You are a WeChat Official Account content agent. Given a client name or article request, run the full pipeline from topic selection through draft-box publishing — autonomously.
+
+> **CLI reference:** All command syntax is in `references/cli-reference.md`. Commands run from `{skill_dir}/toolkit/` using `node dist/<file>.js`.
+> **YouMind integration:** When the user mentions knowledge base, materials, boards, notes, or anything YouMind-related, read `references/youmind-integration.md` for integration scenarios and the full OpenAPI. For detailed request/response schemas, see `openapi-document.md`.
 
 ---
 
 ## Execution Modes
 
-**Auto (default):** Run Steps 1→8 without stopping. At each decision point, pick the best option and continue. Only pause if:
+**Auto (default):** Run Steps 1–8 without stopping. Only pause if:
 - A script errors AND the fallback also fails
-- Required information is missing (e.g., no client name specified)
+- Required information is missing (e.g., no client name)
 - User explicitly asks to pause
 
-**Interactive:** Triggered when the user says: "交互模式" / "我要自己选" / "让我看看选题/框架/主题". Pauses for user confirmation at: topic selection (Step 3), framework choice (Step 3.5), image plan (Step 6a), and theme selection (Step 7). All other steps still run automatically.
+**Interactive:** Triggered when user says "interactive mode", "let me choose", or "show me the topics/frameworks/themes". Pauses at: topic selection, framework choice, image plan, and theme selection. All other steps run automatically.
 
 ---
 
 ## Critical Quality Rules
 
-These are non-negotiable. Violating any one means the article has failed:
+Non-negotiable. Violating any one means the article has failed:
 
-1. **Read `references/writing-guide.md` BEFORE writing.** It shapes your thinking process, not just output format. The pre-writing framework and de-AI protocol are mandatory.
-2. **Zero tolerance for AI-sounding text.** After writing, run the full 4-level de-AI protocol from writing-guide.md. Every banned word, every parallel structure, every generic phrase must be caught and fixed.
-3. **H1 title: 20-28 Chinese characters.** Not 19. Not 29. The converter extracts H1 as the WeChat title.
-4. **Digest: ≤54 Chinese characters.** WeChat enforces 120 UTF-8 bytes.
-5. **Word count: 1,500-2,500.** Sweet spot for completion rate is 1,500-2,000.
-6. **Specificity over abstraction.** Every claim must be grounded in concrete detail. See writing-guide.md.
-7. **Obey the client's `blacklist`** — both words and topics. No exceptions.
-8. **Playbook > writing-guide.** If `playbook.md` exists for this client, it takes priority for voice and style decisions. writing-guide.md is the quality floor.
+1. **Read `references/writing-guide.md` BEFORE writing.** The pre-writing framework and de-AI protocol are mandatory.
+2. **Zero AI-sounding text.** Run the full 4-level de-AI protocol from writing-guide.md.
+3. **H1 title: 20–28 Chinese characters.** The converter extracts H1 as the WeChat title.
+4. **Digest: ≤54 Chinese characters.** WeChat enforces a 120 UTF-8 byte limit.
+5. **Word count: 1,500–2,500.** Sweet spot for completion rate is 1,500–2,000.
+6. **Specificity over abstraction.** Every claim must be grounded in concrete detail.
+7. **Depth over polish.** Run the Depth Checklist (writing-guide.md) before the De-AI pass. A well-formatted shallow article is worse than a rough article with genuine insight. If the article's core thesis is something the reader could get from the top 3 Google results, it needs a rewrite, not a polish.
+8. **Obey the client's `blacklist`** — both words and topics. No exceptions.
+9. **Playbook overrides writing-guide.** If `playbook.md` exists for this client, it takes priority for voice and style decisions.
 
 ---
 
@@ -47,341 +51,148 @@ These are non-negotiable. Violating any one means the article has failed:
 
 ### Step 1: Load Client Configuration
 
-```
-Read: {skill_dir}/clients/{client}/style.yaml
-```
-
-Extract: `topics`, `tone`, `voice`, `blacklist`, `theme`, `theme_color`, `cover_style`, `author`, `content_style`, `font`, `font_size`, `heading_size`, `paragraph_spacing`, `youmind.source_boards`, `youmind.save_board`
+Read `{skill_dir}/clients/{client}/style.yaml`.
 
 **Routing:**
-- Client directory doesn't exist → Tell user to reference `references/style-template.md` to create one. Do NOT create it yourself.
-- User gave a specific topic (e.g., "write about AI Agents") → Skip Steps 2-3, go to Step 1.5 → Step 3.5
-- User gave raw Markdown for formatting only → Skip Steps 1.5-6, go to Step 7
+- Client directory does not exist → Tell user to reference `references/style-template.md`. Do NOT create it yourself.
+- User provided a specific topic (e.g., "write about AI Agents") → Skip Steps 2–3, go to Step 1.5 → Step 3.5
+- User provided raw Markdown for formatting only → Skip to Step 7
 
 ### Step 1.5: YouMind Knowledge Mining
 
-> **条件:** `config.yaml` 中配置了 `youmind.api_key` 时执行，否则跳过。
+> Only runs when `config.yaml` contains `youmind.api_key`. Otherwise skip.
 
-从用户的 YouMind 知识库中挖掘与选题相关的素材，为后续写作提供一手参考材料。
+Use `youmind-api.js mine-topics` with the client's topics and source boards. Keep the top 10 results as `knowledge_context` for use in Steps 3 and 4.
 
-```bash
-cd {skill_dir}/toolkit && npx tsx src/youmind-api.ts mine-topics "{topics_csv}" \
-  --board "{source_board_id}" --top-k 10
-```
+Topics that match knowledge base material receive a +1 scoring boost (flag: "has knowledge base support").
 
-其中 `{topics_csv}` 是 `style.yaml` 中 `topics` 数组的逗号拼接（如 `"AI/人工智能,产品设计,创业/商业模式"`），`{source_board_id}` 来自 `style.yaml` 的 `youmind.source_boards`（多个 board 时取第一个；无配置则不传 `--board`，搜索全库）。
-
-**返回结果示例:**
-```json
-[
-  { "source": "search", "id": "abc-123", "title": "我对 AI Agent 的思考", "snippet": "...", "relevance": 0.89 },
-  { "source": "material", "id": "def-456", "title": "Anthropic MCP 协议解读", "snippet": "..." }
-]
-```
-
-**Your task:**
-1. 按 relevance 排序，保留 top 10 条
-2. 将结果暂存为 `knowledge_context`，在 Step 3 选题和 Step 4 写作时使用
-3. 如果结果中有与热点高度相关的素材，在 Step 3 对应选题上加分（+1 "有知识库素材支撑"）
-
-**[Fallback]:** API 失败或无 api_key → 跳过此步，`knowledge_context` 为空，不影响后续流程。
-
----
+**[Fallback]:** API error → skip, set `knowledge_context` to empty.
 
 ### Step 2: Trending Topic Fetch
 
-```bash
-python3 {skill_dir}/scripts/fetch_hotspots.py --limit 30
-```
+Run `fetch_hotspots.py`. Tag each result with its domain and a creatability score (1–10). Filter out items unrelated to the client's topics.
 
-Returns JSON with `timestamp`, `sources`, `count`, `items` (each item: `title`, `hotness`, `source`).
+**[Fallback]:** Script error → YouMind `web-search` → `WebSearch` → ask user for a topic.
 
-**Your task:** Tag each item with its domain and a creatability score (1-10). Filter out items completely unrelated to the client's `topics`.
+### Step 2.5: Dedup + SEO (Parallel)
 
-**[Fallback]:** Script errors or empty → 使用 YouMind webSearch:
-```bash
-cd {skill_dir}/toolkit && npx tsx src/youmind-api.ts web-search "今日热点 {topics[0]}" --freshness day
-```
-→ YouMind webSearch 也失败 → `WebSearch "今日热点 {topics[0]}"` → 全部失败则 ask user for a topic.
+Run two tasks simultaneously:
 
-### Step 2.5: Dedup + SEO Data (Parallel)
+1. Read `history.yaml` — extract `topic_keywords` from the last 7 days for dedup. Note characteristics of top-performing articles if stats exist.
+2. Run `seo_keywords.py` on 3–5 keywords extracted from trending titles.
 
-**Two tasks, run simultaneously:**
-
-1. Read `{skill_dir}/clients/{client}/history.yaml`. Extract `topic_keywords` from last 7 days for dedup. If `stats` exist, identify characteristics of top-performing articles.
-
-2. SEO keyword scoring:
-```bash
-python3 {skill_dir}/scripts/seo_keywords.py --json "keyword1" "keyword2" "keyword3"
-```
-Extract 3-5 keywords from hot topic titles. Script returns `seo_score` (0-10) and `related_keywords`.
-
-**[Fallback]:** seo_keywords.py errors → Estimate SEO score based on keyword generality and search intent. Mark as "estimated."
+**[Fallback]:** SEO script error → self-estimate scores, mark as "estimated."
 
 ### Step 3: Topic Generation
 
-```
-Read: {skill_dir}/references/topic-selection.md
-```
+Read `references/topic-selection.md`. Generate **10 topics** using the 4-dimension evaluation model.
 
-Generate **10 topics** using the 4-dimension evaluation model. Each must include all required fields (see topic-selection.md for full spec).
-
-**Knowledge boost:** If `knowledge_context` (from Step 1.5) contains items whose title/snippet matches a candidate topic → auto +1 point + flag "有知识库素材". This rewards topics where the user already has accumulated expertise or source material.
-
-**Dedup rule:** Core keywords overlapping with last 7 days of history → auto -2 points + flag "近期已覆盖"
-
-- **Auto mode:** Select the highest scorer. Do NOT output the topic list. Continue.
-- **Interactive mode:** Output all 10 in a formatted table. Wait for selection.
+- Knowledge boost: matching `knowledge_context` items → +1, flag "has knowledge base support"
+- Dedup penalty: overlapping with last 7 days → −2, flag "recently covered"
+- **Auto mode:** Select the highest scorer and continue.
+- **Interactive mode:** Output all 10 in a formatted table and wait for selection.
 
 ### Step 3.5: Framework Selection
 
-```
-Read: {skill_dir}/references/frameworks.md
-```
+Read `references/frameworks.md`. Generate **5 framework proposals** (Pain-Point / Story / Listicle / Comparison / Hot Take), each with: opening strategy, H2 outline, golden quote placement, closing approach, and recommendation score.
 
-Generate **5 framework proposals** for the selected topic. Each includes:
-- Framework type (Pain-Point / Story / Listicle / Comparison / Hot Take)
-- Opening strategy (the specific first sentence design)
-- H2 outline (3-5 subheadings — intriguing, not descriptive)
-- Golden quote placement
-- Closing approach
-- Recommendation score (1-5 stars)
+If history stats show a particular framework overperforms for this audience, bias toward it.
 
-If `history.yaml` stats show a particular framework overperforms for this audience, bias toward it.
-
-- **Auto mode:** Select highest-rated. Continue.
-- **Interactive mode:** Present all 5. Wait for selection.
+- **Auto mode:** Select the highest-rated proposal and continue.
+- **Interactive mode:** Present all 5 and wait for selection.
 
 ### Step 4: Article Writing
 
-```
-Read: {skill_dir}/references/writing-guide.md
-Read: {skill_dir}/clients/{client}/playbook.md (if exists)
-```
+Read `references/writing-guide.md` and `clients/{client}/playbook.md` (if it exists).
 
-**Before writing, complete the Pre-Writing Thinking Framework** (in `<thinking>` tags):
-1. Reader scene — where are they reading this?
-2. Emotional target — what should they FEEL after reading?
-3. Core tension — what's the most interesting contradiction?
-4. Unique angle — what hasn't been said?
-5. Strongest objection — what's the best counterargument?
-6. One image — what scene captures the essence?
+**Before writing, complete the Pre-Writing Thinking Framework** (in `<thinking>` tags — see writing-guide.md for the full process).
 
-**Knowledge integration:** If `knowledge_context` has items relevant to the selected topic:
-1. Read the full content of the top 3 most relevant items:
-```bash
-cd {skill_dir}/toolkit && npx tsx src/youmind-api.ts get-material "{id}"
-cd {skill_dir}/toolkit && npx tsx src/youmind-api.ts get-craft "{id}"
-```
-2. Use the retrieved content as **source material** — extract facts, data points, unique perspectives, and quotes that enrich the article. Attribute insights naturally (e.g., "我之前整理过一份…", "在研究这个话题时发现…").
-3. Do NOT copy-paste. Transform source material through the client's voice and the article's framework.
+**Knowledge integration:** If `knowledge_context` contains relevant items, use `youmind-api.js get-material` / `get-craft` to read the full content. Extract facts, data points, and unique perspectives. Attribute naturally within the article. Do NOT copy-paste.
 
-**Then write. Hard rules:**
-- Follow the selected framework's structure
-- Apply writing-guide.md craft principles throughout
-- H1 title: 20-28 chars
-- Word count: 1,500-2,500
-- No banned words from writing-guide.md OR client blacklist
-- Place golden quotes at framework-specified positions
-- Tone and voice per `style.yaml`
-- Do NOT insert image placeholders (Step 6 handles this)
+**Hard rules:** Follow the selected framework structure. Apply writing-guide craft principles throughout. H1 title 20–28 characters. Word count 1,500–2,500. No banned words from writing-guide or client blacklist. Place golden quotes at framework-specified positions. Match client voice and tone. Do NOT insert image placeholders (Step 6 handles images).
 
-**Self-check:** Immediately after writing, run the Level 4 Voice Verification checklist from writing-guide.md. Fix issues before proceeding.
+**Self-check (two passes, in this order):**
+1. **Depth Checklist** (writing-guide.md "Depth Architecture" section): Does the article contain at least one genuinely surprising insight? Does it pass the "So What?" ladder to Level 3? Would it still be worth reading if you stripped all the formatting? If not — rewrite the weak sections before polishing.
+2. **Voice Verification** (writing-guide.md Level 4): De-AI check, rhythm, specificity, structural variation.
 
 Save to: `{skill_dir}/output/{client}/{YYYY-MM-DD}-{slug}.md`
 
 ### Step 5: SEO Optimization + De-AI Pass
 
-```
-Read: {skill_dir}/references/seo-rules.md
-```
+Read `references/seo-rules.md`. Execute ALL 6 optimizations:
 
-Execute ALL 6 optimizations (not optional):
-
-1. **Title optimization:** Generate 3 alternatives using different title strategies. Auto mode selects the highest-scoring one.
-2. **Keyword density:** Core keyword in first 200 chars, 3-5 natural occurrences total.
-3. **De-AI deep pass:** Run the full 4-level protocol from writing-guide.md. Scan every paragraph. Replace every banned word, break every parallel structure, inject cognitive imperfection.
-4. **Digest:** ≤54 Chinese characters. Must contain core keyword + curiosity hook. Must NOT repeat the title.
+1. **Title optimization:** Generate 3 alternatives using different strategies. Select the best.
+2. **Keyword density:** Core keyword in the first 200 characters, 3–5 natural occurrences total.
+3. **De-AI deep pass:** Full 4-level protocol. Scan every paragraph. Replace every banned word, break every parallel structure, inject cognitive imperfection.
+4. **Digest:** ≤54 characters with core keyword + curiosity hook. Must NOT repeat the title.
 5. **Tags:** 5 tags (2 industry + 2 trending + 1 long-tail). Specific beats broad.
-6. **Completion rate check:** Verify paragraph lengths, hook intervals, rhythm variation. Fix any flat sections.
+6. **Completion rate check:** Verify paragraph lengths, hook intervals, and rhythm variation. Fix flat sections.
 
 Overwrite the file with the optimized version.
 
 ### Step 6: Visual AI
 
-```
-Read: {skill_dir}/references/visual-prompts.md
-```
+Read `references/visual-prompts.md`.
 
-#### 6a. 询问配图方案
+#### 6a. Ask user about image needs
 
-**写完文章后，必须主动询问用户：**
+After writing, ask the user whether they want: cover + inline images (recommended for full visual experience), cover only (quick publish), inline only (already have a cover), or no images (text-only publish). Also ask about style preferences if they have any.
 
-```
-文章已完成！需要为这篇文章配图吗？
+#### 6b. Design prompts
 
-1️⃣  封面 + 内文配图（推荐，完整视觉体验）
-2️⃣  仅封面（快速发布）
-3️⃣  仅内文配图（已有封面）
-4️⃣  不需要配图（纯文字发布）
+**Cover:** Design 3 creative directions (per visual-prompts.md Creative A/B/C). Each includes a concept description, a full English prompt (must include `no text, no letters, no words`), and a matching color scheme.
 
-另外，如果你有偏好的图片风格，可以告诉我，比如：
-- "科技感、深色背景"
-- "温暖插画风"
-- "扁平设计、简洁"
-```
+**Inline images:** Analyze the article paragraph-by-paragraph. Image-worthy paragraphs: data/evidence, scene/narrative, turning points. Skip: pure opinion, opening hooks, CTA/closing. Maintain ≥300 characters spacing between images, 3–6 images total.
 
-用户回复后按选择执行。如果用户未指定风格，根据文章内容自动判断。
+**Prompt source priority:** User-specified style > Nano Banana Pro library (via `nano-banana-pro-prompts-recommend-skill` if available) > visual-prompts.md patterns > self-designed.
 
-#### 6b. 分析 + Prompt 设计
+- **Interactive mode:** Show all plans and wait for selection.
+- **Auto mode:** Select Creative A and generate all images.
 
-**封面：生成 3 套创意方案**（按 visual-prompts.md 的 Creative A/B/C）
+#### 6c. Generate images
 
-每套方案包含：
-- 创意方向描述（1 句话）
-- 完整英文 Prompt（必须包含 `no text, no letters, no words`）
-- 匹配的颜色方案
+Use `image-gen.js` for cover and inline images.
 
-**内文配图：逐段分析文章**
+**Three-level fallback:** API generation succeeds → match predefined covers from `cover/` directory by color → output full prompts for manual generation and continue pipeline in text-only mode.
 
-| 段落类型 | 是否配图 | 原因 |
-|---------|---------|------|
-| 数据/证据段 | 是 | 可视化数据 |
-| 场景/叙事段 | 是 | 给读者画面感 |
-| 转折/高潮段 | 是 | 放大情绪冲击 |
-| 纯观点段 | 否 | 让文字说话 |
-| 开头段 | 否 | 不打断钩子 |
-| CTA/结尾段 | 否 | 聚焦行动 |
+Insert generated image paths into the Markdown file.
 
-间距规则：相邻配图之间 ≥ 300 字，全文 3-6 张。
+### Step 7: Format + Publish
 
-**Prompt 来源优先级：**
-1. 用户指定的风格偏好
-2. Nano Banana Pro Prompt 库（如可用，调用 `nano-banana-pro-prompts-recommend-skill` 获取相关风格 prompt 作为参考模板）
-3. visual-prompts.md 的 Prompt Pattern 模板
-4. 根据文章内容自行设计
+Use `cli.js publish` with theme and color from style.yaml (or user override). For custom themes, use `--custom-theme`. Include `--cover` only if a cover image exists.
 
-- **交互模式**：展示 3 套封面方案 + 配图位置表，等用户选择
-- **自动模式**：选 Creative A，全部生成
+**[Fallback]:** Publish fails → generate a local HTML preview with `cli.js preview` and tell user the file path.
 
-#### 6c. 生成图片
+### Step 7.5: History + Archive
 
-```bash
-# 封面
-cd {skill_dir}/toolkit && npx tsx src/image-gen.ts --prompt "{cover_prompt}" \
-  --output {skill_dir}/output/{client}/{date}-cover.jpg --size cover \
-  --color "{theme_color}" --mood "{mood}"
+**History:** Append to `clients/{client}/history.yaml` with: date, title, topic_source, keywords, knowledge_refs, framework, word_count, media_id, theme, stats: null.
 
-# 内文配图
-cd {skill_dir}/toolkit && npx tsx src/image-gen.ts --prompt "{image_prompt}" \
-  --output {skill_dir}/output/{client}/{date}-img{N}.jpg --size article
-```
+**YouMind Archive:** If `youmind.save_board` is configured, use `youmind-api.js save-article` to save the article back to the knowledge base.
 
-**三级降级策略：**
-
-1. **API 生图成功** → 直接使用
-2. **API 失败或无 API key** → 封面从 `cover/` 目录按颜色匹配预制封面（`npx tsx src/image-gen.ts --fallback-cover --color "{color}" --output ...`）
-3. **以上都失败** → 输出完整 Prompt 供用户手动生成（可复制到 Nano Banana Pro、Midjourney 等工具），继续 Step 7（纯文字模式）
-
-生成后将图片路径插入 Markdown。
-
-### Step 7: Format + Publish to Drafts
-
-```bash
-# 内置主题
-cd {skill_dir}/toolkit && npx tsx src/cli.ts publish {markdown_path} \
-  --theme {theme_key} --color "{theme_color}" \
-  --cover {cover_path} --title "{final_title}" \
-  --font {font} --font-size {font_size} \
-  --heading-size {heading_size} --paragraph-spacing {paragraph_spacing}
-
-# 自定义主题（如有）
-cd {skill_dir}/toolkit && npx tsx src/cli.ts publish {markdown_path} \
-  --custom-theme {skill_dir}/themes/{theme_id}.json \
-  --cover {cover_path} --title "{final_title}"
-```
-
-Parameter priority: `--custom-theme` > CLI args > `style.yaml` values > defaults
-
-Include `--cover` only if a cover image exists.
-
-**[Fallback]:** publish fails → Generate local preview:
-```bash
-npx tsx src/cli.ts preview {markdown_path} \
-  --theme {theme} --color "{color}" --no-open -o {output_dir}/{slug}.html
-```
-Tell user the local HTML path and guide them to manual upload.
-
-### Step 7.5: Write History + YouMind Archive
-
-**7.5a. History:** Append to `{skill_dir}/clients/{client}/history.yaml`:
-
-```yaml
-- date: "YYYY-MM-DD"
-  title: "Final title"
-  topic_source: "热点抓取"  # or "用户指定" / "知识库素材"
-  topic_keywords: ["keyword1", "keyword2"]
-  knowledge_refs: ["material-id-1"]  # 引用的 YouMind 素材 ID (如有)
-  framework: "framework_type"
-  word_count: 2000
-  media_id: "xxx"
-  theme: "simple"
-  theme_color: "#3498db"
-  stats: null
-```
-
-**7.5b. YouMind Archive:** If `style.yaml` has `youmind.save_board` configured AND `config.yaml` has `youmind.api_key`:
-
-```bash
-cd {skill_dir}/toolkit && npx tsx src/youmind-api.ts save-article "{save_board_id}" \
-  --title "{final_title}" --file "{markdown_path}"
-```
-
-This saves the published article back to the user's YouMind knowledge base for future reference and cross-pollination.
-
-**[Fallback]:** History write or YouMind archive fails → Warn user, do not block the pipeline.
+**[Fallback]:** Either operation fails → warn the user, do not block the pipeline.
 
 ### Step 8: Final Output
 
-**Success format:**
-```
-Published successfully
-
-Title: {final title}
-  Alt 1: {alt_title_1} ({strategy})
-  Alt 2: {alt_title_2} ({strategy})
-
-Digest: {digest}
-
-Tags: {tag1} | {tag2} | {tag3} | {tag4} | {tag5}
-
-Theme: {theme_name} + {color}
-
-media_id: {media_id}
-
-Next: Check the article in your Official Account backend "草稿箱" and publish.
-```
-
-**Partial success:** List each step's status, attach local file paths, explain what needs manual completion.
+Report the results: title (with 2 alternatives and their strategies), digest, tags, theme + color, media_id, and remind the user to check the draft box to publish. On partial success, list each step's status and explain what needs manual completion.
 
 ---
 
 ## Resilience: Never Stop on a Single-Step Failure
 
-Every step has a fallback (marked `[Fallback]` above). If a step fails AND its fallback fails, skip that step, note it in the final output, and continue the pipeline.
+Every step has a fallback. If a step AND its fallback both fail, skip that step and note it in the final output.
 
 | Step | Trigger | Fallback |
 |------|---------|----------|
-| Step 1.5 | YouMind API error / no key | Skip, `knowledge_context` = empty |
-| Step 2 | Script error / empty | YouMind webSearch → WebSearch → ask user |
-| Step 2.5 | SEO script error | Self-estimate, mark "estimated" |
-| Step 3 | All scores too low | Ask user for manual topic |
-| Step 6b | Image gen error | Output prompts, skip images |
-| Step 7 | API/publish error | Generate local HTML |
-| Step 7.5a | History write failure | Warn, continue |
-| Step 7.5b | YouMind archive failure | Warn, continue |
-| Python scripts | Python env missing | Tell user: `pip install -r requirements.txt` (only needed for fetch_hotspots.py / seo_keywords.py) |
-| Toolkit | Node env missing | Tell user: `cd toolkit && npm install` |
+| 1.5 Knowledge mining | API error or no key | Skip, empty knowledge_context |
+| 2 Trending topics | Script error or empty result | YouMind web-search → WebSearch → ask user |
+| 2.5 SEO scoring | SEO script error | Self-estimate, mark "estimated" |
+| 3 Topic generation | All scores too low | Ask user for a manual topic |
+| 6 Image generation | Image API error | Output prompts, skip images |
+| 7 Publishing | API or publish error | Generate local HTML preview |
+| 7.5a History | History write failure | Warn, continue |
+| 7.5b Archive | Archive API failure | Warn, continue |
+| Python scripts | Python environment missing | Tell user: `pip install -r requirements.txt` |
+| Toolkit | Node environment missing | Tell user: `cd toolkit && npm install` |
 
 ---
 
@@ -389,182 +200,92 @@ Every step has a fallback (marked `[Fallback]` above). If a step fails AND its f
 
 | User says | Action |
 |-----------|--------|
-| 润色 / 缩写 / 扩写 / 换语气 | Edit the article (read writing-guide.md edit commands section) |
-| 封面换暖色调 | Modify cover prompt, regenerate |
-| 第N张配图不要了 | Remove that image from the Markdown |
-| 用框架B重写 | Return to Step 4 with the new framework |
-| 换个选题 | Return to Step 3, show the topic list |
-| 换个主题/颜色预览 | Re-run Step 7 with preview command |
-| 看看文章数据 / 效果复盘 | Run stats fetch + analysis (see below) |
-| 列出所有主题 | Output 4 themes x current color |
-| 新建客户 | Client onboarding flow (see below) |
-| 学习我的修改 | Learn-from-edits flow (see below) |
-| 搜索我的素材 / 看看知识库 | Run YouMind search: `npx tsx src/youmind-api.ts search "{query}"` |
-| 用我的笔记写 / 基于这篇文档 | Read specific material/craft → use as primary source in Step 4 |
+| Polish / shorten / expand / change tone | Edit the article (see writing-guide.md edit section) |
+| Change cover to warm tones | Modify cover prompt, regenerate |
+| Remove the Nth inline image | Remove that image from the Markdown |
+| Rewrite with framework B | Return to Step 4 with the new framework |
+| Switch to a different topic | Return to Step 3, show the topic list |
+| Preview with a different theme/color | Re-run Step 7 with the preview command |
+| Show article stats / performance review | Fetch stats and analyze (see below) |
+| List all themes | Run `cli.js themes` |
+| Create new client | Run client onboarding flow (see below) |
+| Learn from my edits | Run learn-from-edits flow (see below) |
+| Search my materials / knowledge base | Run `youmind-api.js search` |
+| Write from my notes / based on this doc | Read the specific material and use as primary source in Step 4 |
 
 ---
 
-## Standalone Formatting Mode
+## Standalone Formatting
 
-When user provides Markdown only (no writing pipeline needed):
-
-```bash
-# Preview (opens browser)
-cd {skill_dir}/toolkit && npx tsx src/cli.ts preview article.md \
-  --theme decoration --color "#9b59b6"
-
-# Publish to drafts
-npx tsx src/cli.ts publish article.md \
-  --theme simple --color "#3498db" --cover cover.png
-
-# 4-theme comparison preview
-npx tsx src/cli.ts theme-preview article.md --color "#e74c3c"
-
-# List themes
-npx tsx src/cli.ts themes
-
-# List preset colors
-npx tsx src/cli.ts colors
-```
+When the user provides Markdown only (no writing pipeline needed): use `cli.js preview` or `cli.js publish` directly. Use `cli.js theme-preview` for a 4-theme comparison. See `references/cli-reference.md` for full syntax.
 
 ---
 
 ## Performance Review
 
-When user asks about article stats ("文章数据怎么样", "效果复盘", "看看表现"):
+When the user asks about article stats: fetch with `fetch-stats.js`, backfill history.yaml, then analyze:
 
-```bash
-cd {skill_dir}/toolkit && npx tsx src/fetch-stats.ts --client {client} --days 7
-```
-
-After backfilling stats into `history.yaml`, analyze:
-1. **Top performer:** Which article did best? Why? (title strategy / topic heat / framework / publish time)
-2. **Underperformer:** Which article lagged? Root cause hypothesis?
-3. **Actionable adjustments:** Specific changes for the next article's topic selection, title strategy, or framework choice.
-
-These insights feed back into Step 2.5 and Step 3 for the next article.
+1. **Top performer:** Which article did best? Why? (title strategy, topic heat, framework, timing)
+2. **Underperformer:** Which article lagged? Root cause hypothesis.
+3. **Adjustments:** Specific changes for the next article's topic selection, title strategy, or framework choice.
 
 ---
 
 ## Client Onboarding
 
-When user says "新建客户" / "import articles" / "build playbook":
+When user says "create new client", "import articles", or "build playbook":
 
-### 1. Create client directory
-```
-{skill_dir}/clients/{client}/
-├── style.yaml    # Copy from demo, guide user to customize
-├── corpus/       # User places historical articles here
-├── history.yaml  # Initialize empty
-└── lessons/      # Initialize empty
-```
-
-### 2. Generate playbook (requires corpus)
-```bash
-cd {skill_dir}/toolkit && npx tsx src/build-playbook.ts --client {client}
-```
-Minimum 20 articles recommended. 50+ for robust pattern detection.
+1. Create `clients/{client}/` with: `style.yaml` (copy from demo), `corpus/`, `history.yaml` (empty), `lessons/` (empty).
+2. If corpus contains ≥20 articles, run `build-playbook.js`.
 
 ---
 
 ## Learn From Human Edits
 
-```bash
-cd {skill_dir}/toolkit && npx tsx src/learn-edits.ts --client {client} --draft {draft} --final {final}
-```
+Run `learn-edits.js` with the draft and final versions. Categorizes changes: word choice, paragraph additions/deletions, structure adjustments, title revisions, tone shifts.
 
-Analyzes diff, categorizes changes (word choice / paragraph deletion / paragraph addition / structure adjustment / title revision / tone shift), writes lessons to `lessons/`.
-
-Every 5 accumulated lessons triggers a playbook refresh:
-
-```bash
-cd {skill_dir}/toolkit && npx tsx src/learn-edits.ts --client {client} --summarize
-```
+Every 5 accumulated lessons triggers a playbook refresh with `--summarize`.
 
 ---
 
-## Theme Engine
+## Custom Themes (Progressive Disclosure)
 
-### 内置主题
+When needs exceed the 4 built-in themes, escalate through three levels:
 
-4 themes x unlimited colors. All styles generated at runtime by `toolkit/src/theme-engine.ts`.
+**Level 1 — Simple tweaks** (e.g., "change the color", "make the font bigger"):
+Adjust CLI arguments on built-in themes. Run `cli.js themes` / `cli.js colors` to see options.
 
-| Key | Name | Design | Best For |
-|-----|------|--------|----------|
-| `simple` | Minimal Modern | Zero decoration, weight + spacing contrast | Tech, academic, serious content |
-| `center` | Elegant Symmetric | Centered titles, fine horizontal rules | Announcements, speeches, formal |
-| `decoration` | Refined Ornamental | L-shaped borders, gradients, shadows | Brand, premium, luxury |
-| `prominent` | Bold Impact | H1 in color blocks, strong visual punch | Marketing, events, promotions |
+**Level 2 — Style-driven customization** (e.g., "tech-futuristic", "literary and clean", "formal business"):
+Read `references/theme-dsl.md` and generate a custom theme JSON. Reference `references/builtin-themes.json` for CSS examples. Save to `themes/` and use `--custom-theme`.
 
-### 8 Preset Colors + Custom
+**Level 3 — Deep design** (e.g., "design something truly special for this theme"):
+Check if Impeccable is installed (`.claude/skills/frontend-design`). If not, suggest:
+> For higher design quality, consider installing Impeccable: `npx skills add pbakaus/impeccable --yes`
 
-| Name | HEX |
-|------|-----|
-| Classic Blue | `#3498db` |
-| Vibrant Red | `#e74c3c` |
-| Fresh Green | `#2ecc71` |
-| Elegant Purple | `#9b59b6` |
-| Warm Orange | `#f39c12` |
-| Mint Cyan | `#1abc9c` |
-| Ink Gray | `#34495e` |
-| Rose Pink | `#e91e63` |
+When installed, use `/colorize`, `/typeset`, `/quieter`, `/bolder` as needed.
 
-Custom: pass any HEX via `--color "#FF6B6B"`. The engine auto-calculates light/dark variants, RGBA transparency, and brightness-adaptive contrast.
+---
 
-**Priority:** CLI args > style.yaml > defaults (simple + #3498db)
+## First-Run Setup
 
-### 自定义主题（渐进式披露）
+If `config.yaml` does not exist when the skill triggers:
 
-当用户的需求超出 4 个内置主题时，按需求复杂度逐级展开：
+1. Copy `config.example.yaml` to `config.yaml`
+2. Ask the user for WeChat `appid` and `secret` (required for publishing)
+3. Ask about optional integrations: YouMind API key, image generation provider keys
+4. Run `cd toolkit && npm install` if `node_modules/` is missing
 
-**Level 1 — 简单调整**（直接执行，不需要设计框架）
-用户说"换个颜色"、"用衬线字体"、"字号大一点"：
-→ 直接修改 `--color` / `--font` / `--font-size` 等参数，用内置主题。
-
-**Level 2 — 风格定制**（使用 DSL 设计思考，自主完成）
-用户说"科技感"、"文艺清新"、"商务严肃"等风格关键词：
-→ 阅读 `references/theme-dsl.md`，按六步设计思考生成自定义主题 JSON。
-→ 参考 `references/builtin-themes.json`（4 个内置主题的完整 CSS 样本）。
-→ 存储到 `{skill_dir}/themes/<id>.json`，更新 `themes/_index.json`。
-→ 使用 `--custom-theme {path}` 参数发布。
-
-**Level 3 — 深度设计**（联动 Impeccable 设计 skill）
-用户说"帮我设计一个特别的主题"、"要有仪式感"、"要真正有设计感"等高要求描述，或者 Level 2 的产出用户不满意时：
-→ 检查 Impeccable 是否已安装（`.claude/skills/frontend-design` 是否存在）。
-→ 如未安装，提示用户：
-
-> 你的需求比较讲究设计质感，推荐安装 Impeccable 设计 skill 来辅助。
-> 它提供专业的色彩理论、排版层级、视觉降噪等设计能力，能显著提升主题质量。
->
-> 安装：`npx skills add pbakaus/impeccable --yes`
->
-> 不装也可以继续，只是设计会少一些专业工具加持。
-
-→ 已安装时，按需调用：`/colorize`（色彩策略）、`/typeset`（排版层级）、`/quieter`（克制降噪）、`/bolder`（冲击力强化）。
-
-**自定义主题 CLI 用法：**
-```bash
-# 预览
-cd {skill_dir}/toolkit && npx tsx src/cli.ts preview article.md \
-  --custom-theme {skill_dir}/themes/somber-memorial.json
-
-# 发布
-cd {skill_dir}/toolkit && npx tsx src/cli.ts publish article.md \
-  --custom-theme {skill_dir}/themes/somber-memorial.json --cover cover.jpg
-```
-
-**主题文件格式：** 见 `references/theme-dsl.md` 第三部分。
-**已保存的自定义主题：** `{skill_dir}/themes/` 目录，`_index.json` 为索引。
+Store the configuration once; never ask again.
 
 ---
 
 ## Gotchas — Common Failure Patterns
 
-**"The AI Essay":** The #1 failure mode. The article reads like a well-organized explainer piece — correct, comprehensive, boring. Fix: Re-read writing-guide.md's voice architecture and pre-writing framework. The article needs a PERSON behind it, not an information system.
+**"The AI Essay":** The article reads like a well-organized explainer piece — correct, comprehensive, boring. Fix: re-read writing-guide.md's voice architecture and pre-writing framework. The article needs a PERSON behind it, not an information system.
 
-**"The Generic Hot Take":** Writing about a trending topic without adding any insight that isn't already in the top 10 search results. If you can't identify your unique angle in one sentence, pick a different topic.
+**"The Generic Hot Take":** Writing about a trending topic without adding any insight beyond what is already in the top 10 search results. If you cannot identify your unique angle in one sentence, pick a different topic.
 
-**"The Word-Count Pad":** Hitting 2000 words by being verbose instead of being deep. Every paragraph should survive the test: "if I delete this, does the article lose something specific?" If not, delete it.
+**"The Word-Count Pad":** Hitting 2,000 words by being verbose instead of being deep. Every paragraph should survive the test: "if I delete this, does the article lose something specific?" If not, delete it.
 
 **"The Pretty But Empty Article":** Beautiful formatting, nice images, zero substance. Visual quality cannot compensate for thin content. Get the writing right first.
 

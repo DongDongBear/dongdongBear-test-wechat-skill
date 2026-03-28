@@ -238,6 +238,18 @@ Concrete, immediate:
 
 ---
 
+## Depth Requirements (Apply to ALL Frameworks)
+
+Structural correctness is not enough. A perfectly structured article with shallow content is worse than a messy article with genuine insight. Before considering a framework "executed," verify:
+
+1. **The Insight Test:** Can you state the article's core insight in one sentence that would surprise a knowledgeable reader? If not, dig deeper before proceeding to SEO.
+2. **The Google Test:** Search the topic. Read the top 3 results. Does your article say ANYTHING those articles don't? If it's just better-written repetition, it's not worth publishing.
+3. **The Specificity Test:** Count your concrete examples (real numbers, real names, real scenarios). If fewer than 3 in a 2000-word article, the content is too abstract.
+4. **The Counterargument Test:** Have you included the strongest objection to your main point? Not a strawman — the real one that smart readers will think of. Addressing it builds trust and demonstrates genuine thinking.
+5. **The Second-Order Test:** Most articles stop at "X happened" or "X is important." Push to: "X happened, which means Y (non-obvious consequence), which creates an opportunity/risk that Z." This second-order thinking is what separates depth from surface.
+
+---
+
 ## Framework Combination
 
 For complex topics, combine two frameworks. Use ONE for overall structure, embed elements of the other:
