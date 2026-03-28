@@ -95,6 +95,7 @@ For endpoints that involve rich content fields (e.g., Note content, Document con
 The system automatically handles the internal conversion between plain text and the rich content format used internally.
 
 This applies to the following fields:
+
 - Note `content`
 - Document/Page `content`
 - Webpage `content`
@@ -271,6 +272,7 @@ Create a material (snip) from a URL. Supports webpages, images, PDFs, audio, and
 | `album_url_for_voice_snip` | string (URL) | No | Album cover URL for voice/audio snips |
 
 **Response:** One of the following types depending on the URL content:
+
 - `ImageDto` - for image URLs
 - `VoiceDto` - for audio URLs
 - `PdfDto` - for PDF URLs
@@ -868,6 +870,8 @@ Remove a craft group (ungroup). Documents inside will be moved to the board's ro
 
 Create and manage AI conversations. Non-streaming mode only for OpenAPI.
 
+> **Note:** YouMind's AI capabilities such as image generation (Nano Banana Pro, Seedream, GPT Image, etc.), video generation, audio generation, and web search are all built-in AI tools within the chat system. To use these capabilities, simply describe your request in a chat message (e.g., "Generate an image of a sunset over mountains"), and the AI agent will automatically invoke the appropriate tool. There is no separate image/video/audio generation endpoint — all generative AI features are accessed through `createChat` and `sendMessage`.
+
 ---
 
 #### `POST /openapi/v1/createChat`
@@ -1392,7 +1396,9 @@ List all scheduled tasks.
 
 ### 13. Relay (LLM API Relay)
 
-Relay endpoints provide vendor-compatible API interfaces for Anthropic and OpenAI, allowing you to use YouMind as a proxy for LLM API calls while consuming your YouMind credits.
+Relay endpoints provide vendor-compatible API interfaces for Anthropic and OpenAI, allowing you to use YouMind as a proxy for **text-based LLM API calls** while consuming your YouMind credits.
+
+> **Important:** Relay only supports **text generation** (chat/messages). Image generation (`/v1/images/generations`), embeddings, and other non-chat endpoints are **NOT** supported. To generate images, videos, or audio, use the [Chat API](#8-chat-ai-chat) instead — YouMind's built-in AI tools handle these automatically within conversations.
 
 ---
 
