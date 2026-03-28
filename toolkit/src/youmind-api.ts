@@ -330,7 +330,7 @@ export async function mineTopics(opts: MineTopicsOptions, config?: YouMindConfig
         title: item.title ?? '(无标题)',
         snippet: String(item.content ?? '').slice(0, 300),
         relevance: item.score,
-        updatedAt: item.updated_at,
+        updatedAt: item.updated_at as string | undefined,
       });
     }
   }
@@ -355,7 +355,7 @@ export async function mineTopics(opts: MineTopicsOptions, config?: YouMindConfig
           id,
           title: item.title ?? '(无标题)',
           snippet: String(item.content ?? '').slice(0, 300),
-          updatedAt: item.updated_at,
+          updatedAt: item.updated_at as string | undefined,
         });
       }
     }

@@ -29,7 +29,7 @@ image:
     youmind:                 # YouMind Nano Banana Pro (使用上方 youmind.api_key)
       api_key: ""            # 留空则自动使用上方 youmind.api_key
       model: "nano-banana-pro"
-      base_url: "https://api.youmind.com/v1"
+      base_url: "https://youmind.com/v1"
     gemini:                  # Google Gemini Imagen
       api_key: ""            # Google AI Studio API key
       model: "imagen-3.0-generate-002"

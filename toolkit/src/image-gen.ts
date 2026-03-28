@@ -227,8 +227,8 @@ type GenerateFn = (prompt: string, apiKey: string, sizeOrRatio: string, model?: 
  * YouMind 生图：尝试多个 base_url（api.youmind.com 有 DNS 问题时自动降级到 youmind.com）
  */
 const YOUMIND_BASE_URLS = [
-  'https://api.youmind.com/v1',
   'https://youmind.com/v1',
+  'https://api.youmind.com/v1',
 ];
 
 async function generateYouMind(
