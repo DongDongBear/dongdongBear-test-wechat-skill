@@ -288,14 +288,20 @@ cd {skill_dir}/toolkit && npx tsx src/image-gen.ts --prompt "{image_prompt}" \
 ### Step 7: Format + Publish to Drafts
 
 ```bash
+# 内置主题
 cd {skill_dir}/toolkit && npx tsx src/cli.ts publish {markdown_path} \
   --theme {theme_key} --color "{theme_color}" \
   --cover {cover_path} --title "{final_title}" \
   --font {font} --font-size {font_size} \
   --heading-size {heading_size} --paragraph-spacing {paragraph_spacing}
+
+# 自定义主题（如有）
+cd {skill_dir}/toolkit && npx tsx src/cli.ts publish {markdown_path} \
+  --custom-theme {skill_dir}/themes/{theme_id}.json \
+  --cover {cover_path} --title "{final_title}"
 ```
 
-Parameter priority: user's current session override > `style.yaml` values > defaults
+Parameter priority: `--custom-theme` > CLI args > `style.yaml` values > defaults
 
 Include `--cover` only if a cover image exists.
 
@@ -479,6 +485,8 @@ cd {skill_dir}/toolkit && npx tsx src/learn-edits.ts --client {client} --summari
 
 ## Theme Engine
 
+### 内置主题
+
 4 themes x unlimited colors. All styles generated at runtime by `toolkit/src/theme-engine.ts`.
 
 | Key | Name | Design | Best For |
@@ -504,6 +512,49 @@ cd {skill_dir}/toolkit && npx tsx src/learn-edits.ts --client {client} --summari
 Custom: pass any HEX via `--color "#FF6B6B"`. The engine auto-calculates light/dark variants, RGBA transparency, and brightness-adaptive contrast.
 
 **Priority:** CLI args > style.yaml > defaults (simple + #3498db)
+
+### 自定义主题（渐进式披露）
+
+当用户的需求超出 4 个内置主题时，按需求复杂度逐级展开：
+
+**Level 1 — 简单调整**（直接执行，不需要设计框架）
+用户说"换个颜色"、"用衬线字体"、"字号大一点"：
+→ 直接修改 `--color` / `--font` / `--font-size` 等参数，用内置主题。
+
+**Level 2 — 风格定制**（使用 DSL 设计思考，自主完成）
+用户说"科技感"、"文艺清新"、"商务严肃"等风格关键词：
+→ 阅读 `references/theme-dsl.md`，按六步设计思考生成自定义主题 JSON。
+→ 参考 `references/builtin-themes.json`（4 个内置主题的完整 CSS 样本）。
+→ 存储到 `{skill_dir}/themes/<id>.json`，更新 `themes/_index.json`。
+→ 使用 `--custom-theme {path}` 参数发布。
+
+**Level 3 — 深度设计**（联动 Impeccable 设计 skill）
+用户说"帮我设计一个特别的主题"、"要有仪式感"、"要真正有设计感"等高要求描述，或者 Level 2 的产出用户不满意时：
+→ 检查 Impeccable 是否已安装（`.claude/skills/frontend-design` 是否存在）。
+→ 如未安装，提示用户：
+
+> 你的需求比较讲究设计质感，推荐安装 Impeccable 设计 skill 来辅助。
+> 它提供专业的色彩理论、排版层级、视觉降噪等设计能力，能显著提升主题质量。
+>
+> 安装：`npx skills add pbakaus/impeccable --yes`
+>
+> 不装也可以继续，只是设计会少一些专业工具加持。
+
+→ 已安装时，按需调用：`/colorize`（色彩策略）、`/typeset`（排版层级）、`/quieter`（克制降噪）、`/bolder`（冲击力强化）。
+
+**自定义主题 CLI 用法：**
+```bash
+# 预览
+cd {skill_dir}/toolkit && npx tsx src/cli.ts preview article.md \
+  --custom-theme {skill_dir}/themes/somber-memorial.json
+
+# 发布
+cd {skill_dir}/toolkit && npx tsx src/cli.ts publish article.md \
+  --custom-theme {skill_dir}/themes/somber-memorial.json --cover cover.jpg
+```
+
+**主题文件格式：** 见 `references/theme-dsl.md` 第三部分。
+**已保存的自定义主题：** `{skill_dir}/themes/` 目录，`_index.json` 为索引。
 
 ---
 

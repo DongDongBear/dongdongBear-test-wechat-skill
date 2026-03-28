@@ -231,7 +231,7 @@
 }
 ```
 
-存储路径：`${CLAUDE_PLUGIN_DATA}/themes/<id>.json`，回退到 `.claude/skills/custom-theme/data/themes/`。
+存储路径：`{skill_dir}/themes/<id>.json`，同时更新 `themes/_index.json` 索引。
 
 ---
 
