@@ -75,8 +75,10 @@ export class WeChatConverter {
   convert(markdownText: string): ConvertResult {
     const title = this.extractTitle(markdownText);
     markdownText = this.stripH1(markdownText);
+    markdownText = this.fixCjkEmphasis(markdownText);
 
     let html = this.md.render(markdownText);
+    html = html.replace(/\u200A/g, '');
 
     // 数学公式: 将 $...$ 和 $$...$$ 转换为 SVG（在 cheerio 之前处理纯文本更可靠）
     html = processMathInHtml(html);
@@ -123,6 +125,22 @@ export class WeChatConverter {
       }
     }
     return '';
+  }
+
+  /**
+   * Fix CJK emphasis: markdown-it's flanking delimiter algorithm fails when
+   * closing emphasis (e.g. **) is preceded by CJK punctuation and followed
+   * by a CJK character — e.g. **第一，去体检。**不是 won't bold.
+   *
+   * Inserts a hair space (U+200A, recognized as whitespace by markdown-it)
+   * after the closing marker so it passes the right-flanking test.
+   * The hair space is stripped from rendered HTML after markdown-it runs.
+   */
+  private fixCjkEmphasis(text: string): string {
+    return text.replace(
+      /([\u3000-\u303F\uFF01-\uFF60\u2018-\u201F\u2026\u2014\u2013\u00B7])(\*{1,2}|_{1,2})([\u4E00-\u9FFF\u3400-\u4DBF\uF900-\uFAFF])/g,
+      '$1$2\u200A$3',
+    );
   }
 
   private stripH1(text: string): string {
