@@ -8,39 +8,94 @@ Usage:
 
 import argparse
 import json
+import logging
 import sys
+import time
 from datetime import datetime, timedelta
 from pathlib import Path
 
 import requests
 import yaml
 
+logger = logging.getLogger(__name__)
 
-def get_article_summary(token, begin_date, end_date):
-    """Get daily article summary from WeChat Data Analytics API."""
-    resp = requests.post(
-        f"https://api.weixin.qq.com/datacube/getarticlesummary?access_token={token}",
-        json={"begin_date": begin_date, "end_date": end_date},
+# 最大重试次数
+MAX_RETRIES = 3
+# 重试退避基数（秒）
+BACKOFF_BASE = 2
+
+
+def _request_with_retry(method, url, **kwargs):
+    """带重试和指数退避的 HTTP 请求封装。"""
+    last_exc = None
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            resp = requests.request(method, url, **kwargs)
+            resp.raise_for_status()
+            return resp
+        except requests.RequestException as exc:
+            last_exc = exc
+            if attempt < MAX_RETRIES:
+                wait = BACKOFF_BASE ** attempt
+                logger.warning(
+                    "请求失败 (第 %d/%d 次): %s — %d 秒后重试",
+                    attempt, MAX_RETRIES, exc, wait,
+                )
+                time.sleep(wait)
+            else:
+                logger.error("请求失败，已达最大重试次数: %s", exc)
+    raise last_exc  # type: ignore[misc]
+
+
+def get_access_token(appid, secret):
+    """通过微信 API 获取 access_token（对应 toolkit/src/wechat-api.ts 中的 getAccessToken）。"""
+    url = (
+        "https://api.weixin.qq.com/cgi-bin/token"
+        f"?grant_type=client_credential&appid={appid}&secret={secret}"
     )
+    resp = _request_with_retry("GET", url)
     data = resp.json()
-    if "list" in data:
-        return data["list"]
-    return []
+
+    if "access_token" not in data:
+        errcode = data.get("errcode", "unknown")
+        errmsg = data.get("errmsg", "unknown")
+        raise RuntimeError(
+            f"WeChat API error: errcode={errcode}, errmsg={errmsg}"
+        )
+
+    return data["access_token"]
 
 
 def get_article_total(token, begin_date, end_date):
-    """Get cumulative article stats."""
-    resp = requests.post(
-        f"https://api.weixin.qq.com/datacube/getarticletotal?access_token={token}",
-        json={"begin_date": begin_date, "end_date": end_date},
-    )
+    """获取文章累计统计数据。"""
+    url = f"https://api.weixin.qq.com/datacube/getarticletotal?access_token={token}"
+    resp = _request_with_retry("POST", url, json={
+        "begin_date": begin_date,
+        "end_date": end_date,
+    })
     data = resp.json()
-    if "list" in data:
-        return data["list"]
-    return []
+
+    # 校验返回结构
+    if "errcode" in data and data["errcode"] != 0:
+        errcode = data.get("errcode", "unknown")
+        errmsg = data.get("errmsg", "unknown")
+        raise RuntimeError(
+            f"WeChat datacube error: errcode={errcode}, errmsg={errmsg}"
+        )
+
+    if not isinstance(data.get("list"), list):
+        logger.warning("API 返回中缺少 'list' 字段或格式异常: %s", data)
+        return []
+
+    return data["list"]
 
 
 def main():
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+    )
+
     parser = argparse.ArgumentParser(description="Fetch WeChat article stats")
     parser.add_argument("--client", required=True, help="Client name")
     parser.add_argument("--days", type=int, default=7, help="Days to look back")
@@ -51,7 +106,7 @@ def main():
     history_path = skill_dir / "clients" / args.client / "history.yaml"
 
     if not history_path.exists():
-        print(f"Error: {history_path} not found", file=sys.stderr)
+        logger.error("文件不存在: %s", history_path)
         sys.exit(1)
 
     with open(history_path, "r", encoding="utf-8") as f:
@@ -61,7 +116,7 @@ def main():
             history = []
 
     if not args.token:
-        # Try to load from config
+        # 尝试从配置文件读取
         config_path = skill_dir / "config.yaml"
         if config_path.exists():
             with open(config_path, "r", encoding="utf-8") as f:
@@ -70,13 +125,12 @@ def main():
             appid = wechat.get("appid")
             secret = wechat.get("secret")
             if appid and secret:
-                from wechat_api_helper import get_access_token
                 token = get_access_token(appid, secret)
             else:
-                print("Error: No access token and no appid/secret in config.yaml", file=sys.stderr)
+                logger.error("配置文件中缺少 appid/secret，且未提供 --token")
                 sys.exit(1)
         else:
-            print("Error: Provide --token or configure config.yaml", file=sys.stderr)
+            logger.error("请提供 --token 或配置 config.yaml")
             sys.exit(1)
     else:
         token = args.token
@@ -86,21 +140,23 @@ def main():
     begin_str = begin.strftime("%Y-%m-%d")
     end_str = end.strftime("%Y-%m-%d")
 
-    print(f"Fetching stats for {args.client} ({begin_str} to {end_str})...")
+    logger.info("正在获取 %s 的统计数据 (%s to %s)...", args.client, begin_str, end_str)
 
     try:
         stats = get_article_total(token, begin_str, end_str)
     except Exception as e:
-        print(f"Error fetching stats: {e}", file=sys.stderr)
+        logger.error("获取统计数据失败: %s", e)
         sys.exit(1)
 
-    # Match stats to history by title
+    # 按标题匹配统计数据到历史记录
     updated = 0
     for entry in history:
         if entry.get("stats") is not None:
             continue
         for stat in stats:
-            details = stat.get("details", [])
+            details = stat.get("details")
+            if not isinstance(details, list):
+                continue
             for d in details:
                 if d.get("title") == entry.get("title"):
                     entry["stats"] = {
@@ -118,7 +174,7 @@ def main():
     else:
         print("No matching articles found to update.")
 
-    # Output summary
+    # 输出摘要
     output = {
         "client": args.client,
         "period": f"{begin_str} to {end_str}",

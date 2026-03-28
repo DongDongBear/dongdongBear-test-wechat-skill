@@ -4,31 +4,41 @@ Build writing playbook from historical corpus.
 
 Usage:
     python3 build_playbook.py --client demo
+    python3 build_playbook.py --client demo --verbose
 """
 
 import argparse
 import json
+import logging
 import sys
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 
 def main():
     parser = argparse.ArgumentParser(description="Extract writing patterns from corpus")
     parser.add_argument("--client", required=True, help="Client name")
+    parser.add_argument("--verbose", action="store_true", help="输出每篇文章的调试详情")
     args = parser.parse_args()
+
+    logging.basicConfig(
+        level=logging.DEBUG if args.verbose else logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+    )
 
     skill_dir = Path(__file__).parent.parent
     corpus_dir = skill_dir / "clients" / args.client / "corpus"
 
     if not corpus_dir.exists():
-        print(f"Error: Corpus directory not found: {corpus_dir}")
-        print(f"Create it and add .md files: mkdir -p {corpus_dir}")
+        logger.error("Corpus directory not found: %s", corpus_dir)
+        logger.error("Create it and add .md files: mkdir -p %s", corpus_dir)
         sys.exit(1)
 
     files = sorted(corpus_dir.glob("*.md"))
     if not files:
-        print(f"Error: No .md files found in {corpus_dir}")
-        print("Add at least 20 historical articles (50+ recommended).")
+        logger.error("No .md files found in %s", corpus_dir)
+        logger.error("Add at least 20 historical articles (50+ recommended).")
         sys.exit(1)
 
     # Compute corpus stats
@@ -37,9 +47,22 @@ def main():
     title_lengths = []
     h2_counts = []
     articles = []
+    skipped = 0
 
     for f in files:
-        text = f.read_text(encoding="utf-8")
+        try:
+            text = f.read_text(encoding="utf-8")
+        except OSError as exc:
+            logger.warning("无法读取文件 %s: %s", f.name, exc)
+            skipped += 1
+            continue
+
+        # 跳过空文件
+        if not text.strip():
+            logger.warning("跳过空文件: %s", f.name)
+            skipped += 1
+            continue
+
         chars = len(text)
         total_chars += chars
 
@@ -63,12 +86,24 @@ def main():
             "h2_count": h2_count,
         })
 
-    avg_chars = total_chars // len(files) if files else 0
+        logger.debug(
+            "  %s — %d chars, title=%r, h2=%d",
+            f.name, chars, title, h2_count,
+        )
+
+    if not articles:
+        logger.error("所有 corpus 文件均无效，无法生成统计信息。")
+        sys.exit(1)
+
+    if skipped:
+        logger.warning("跳过 %d 个无效或空文件", skipped)
+
+    avg_chars = total_chars // len(articles)
     avg_title_len = sum(title_lengths) // len(title_lengths) if title_lengths else 0
     avg_h2 = sum(h2_counts) // len(h2_counts) if h2_counts else 0
 
     stats = {
-        "total_articles": len(files),
+        "total_articles": len(articles),
         "avg_chars": avg_chars,
         "avg_title_length": avg_title_len,
         "avg_h2_count": avg_h2,
@@ -79,7 +114,7 @@ def main():
 
     # Output batch analysis prompts
     print("\n--- Batch Analysis Instructions ---")
-    print(f"Total articles: {len(files)}")
+    print(f"Total articles: {len(articles)}")
     print(f"Average length: {avg_chars} chars")
     print(f"Average title length: {avg_title_len} chars")
     print(f"Average H2 sections: {avg_h2}")

@@ -10,11 +10,14 @@ Usage:
 import argparse
 import difflib
 import json
+import logging
 import sys
 from datetime import datetime
 from pathlib import Path
 
 import yaml
+
+logger = logging.getLogger(__name__)
 
 
 def analyze_diff(draft_text, final_text):
@@ -71,6 +74,11 @@ def analyze_diff(draft_text, final_text):
 
 
 def main():
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+    )
+
     parser = argparse.ArgumentParser(description="Learn from human edits")
     parser.add_argument("--client", required=True, help="Client name")
     parser.add_argument("--draft", help="Draft markdown file")
@@ -83,26 +91,52 @@ def main():
     lessons_dir.mkdir(parents=True, exist_ok=True)
 
     if args.summarize:
-        # List all lessons
+        # 汇总所有 lessons
         lesson_files = sorted(lessons_dir.glob("*.yaml"))
         lessons = []
         for f in lesson_files:
-            with open(f, "r", encoding="utf-8") as fh:
-                lesson = yaml.safe_load(fh)
-                if lesson:
-                    lessons.append(lesson)
+            try:
+                with open(f, "r", encoding="utf-8") as fh:
+                    lesson = yaml.safe_load(fh)
+                    if lesson:
+                        lessons.append(lesson)
+            except yaml.YAMLError as exc:
+                logger.warning("跳过无法解析的 YAML 文件 %s: %s", f.name, exc)
+            except OSError as exc:
+                logger.warning("无法读取文件 %s: %s", f.name, exc)
         print(json.dumps(lessons, ensure_ascii=False, indent=2))
-        print(f"\nTotal lessons: {len(lessons)}")
+        logger.info("Total lessons: %d", len(lessons))
         if len(lessons) >= 5:
-            print("Recommendation: Run playbook update to consolidate patterns.")
+            logger.info("Recommendation: Run playbook update to consolidate patterns.")
         return
 
     if not args.draft or not args.final:
-        print("Error: --draft and --final required (or use --summarize)")
+        logger.error("--draft and --final required (or use --summarize)")
         sys.exit(1)
 
-    draft_text = Path(args.draft).read_text(encoding="utf-8")
-    final_text = Path(args.final).read_text(encoding="utf-8")
+    # 检查 draft 文件是否存在
+    draft_path = Path(args.draft)
+    if not draft_path.exists():
+        logger.error("Draft 文件不存在: %s", draft_path)
+        sys.exit(1)
+
+    # 检查 final 文件是否存在
+    final_path = Path(args.final)
+    if not final_path.exists():
+        logger.error("Final 文件不存在: %s", final_path)
+        sys.exit(1)
+
+    try:
+        draft_text = draft_path.read_text(encoding="utf-8")
+    except OSError as exc:
+        logger.error("无法读取 draft 文件 %s: %s", draft_path, exc)
+        sys.exit(1)
+
+    try:
+        final_text = final_path.read_text(encoding="utf-8")
+    except OSError as exc:
+        logger.error("无法读取 final 文件 %s: %s", final_path, exc)
+        sys.exit(1)
 
     analysis = analyze_diff(draft_text, final_text)
 
@@ -115,18 +149,26 @@ def main():
         "patterns": [],  # To be filled by Agent analysis
     }
 
-    output_file = lessons_dir / f"{datetime.now().strftime('%Y-%m-%d')}-diff.yaml"
-    with open(output_file, "w", encoding="utf-8") as f:
-        yaml.dump(lesson, f, allow_unicode=True, default_flow_style=False)
+    # 使用 HHmmss 时间戳避免同一天内的文件名冲突
+    output_file = lessons_dir / f"{datetime.now().strftime('%Y-%m-%d_%H%M%S')}-diff.yaml"
+    try:
+        with open(output_file, "w", encoding="utf-8") as f:
+            yaml.dump(lesson, f, allow_unicode=True, default_flow_style=False)
+    except (OSError, yaml.YAMLError) as exc:
+        logger.error("无法写入 lesson 文件 %s: %s", output_file, exc)
+        sys.exit(1)
 
     print(json.dumps(analysis, ensure_ascii=False, indent=2))
-    print(f"\nLesson saved to: {output_file}")
+    logger.info("Lesson saved to: %s", output_file)
 
     # Check if playbook update needed
     lesson_count = len(list(lessons_dir.glob("*.yaml")))
     if lesson_count >= 5 and lesson_count % 5 == 0:
-        print(f"\n{lesson_count} lessons accumulated. Consider updating playbook:")
-        print(f"  python3 {__file__} --client {args.client} --summarize")
+        logger.info(
+            "%d lessons accumulated. Consider updating playbook:\n"
+            "  python3 %s --client %s --summarize",
+            lesson_count, __file__, args.client,
+        )
 
 
 if __name__ == "__main__":
