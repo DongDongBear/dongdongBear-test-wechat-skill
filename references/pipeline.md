@@ -41,8 +41,10 @@ Run two tasks simultaneously:
 
 ## Step 3: Topic Generation
 
-Read `references/topic-selection.md`. Generate **10 topics** using the 4-dimension evaluation model.
+Read `references/topic-selection.md`. Generate **10 topics** using the 5-dimension evaluation model (Heat, Audience Fit, Angle Value, Engagement Potential, Insight Potential).
 
+- **Each topic MUST include an Atomic Insight draft** — 1-2 sentences stating the core insight the article could deliver. This is the most important field. If you can't draft one, the topic is too shallow.
+- Apply the **Topic Sharpening process** (generic → specific → tense → urgent → insight) to all candidates.
 - Knowledge boost: matching `knowledge_context` items → +1, flag "has knowledge base support"
 - Dedup penalty: overlapping with last 7 days → −2, flag "recently covered"
 - **Auto mode:** Select the highest scorer and continue.
@@ -50,7 +52,7 @@ Read `references/topic-selection.md`. Generate **10 topics** using the 4-dimensi
 
 ## Step 3.5: Framework Selection
 
-Read `references/frameworks.md`. Generate **5 framework proposals** (Pain-Point / Story / Listicle / Comparison / Hot Take), each with: opening strategy, H2 outline, golden quote placement, closing approach, and recommendation score.
+Read `references/frameworks.md`. Generate **5 framework proposals** (Pain-Point / Story / Listicle / Comparison / Hot Take / Exposé), each with: opening strategy, emotional arc shape, H2 outline, golden quote placement, closing approach, and recommendation score.
 
 If history stats show a particular framework overperforms for this audience, bias toward it.
 
@@ -61,15 +63,20 @@ If history stats show a particular framework overperforms for this audience, bia
 
 Read `references/writing-guide.md` and `clients/{client}/playbook.md` (if it exists).
 
-**Before writing, complete the Pre-Writing Thinking Framework** (in `<thinking>` tags — see writing-guide.md for the full process).
+**Before writing, complete the Pre-Writing Thinking Framework** (in `<thinking>` tags — see writing-guide.md). This MUST include identifying the **Atomic Insight** — the ONE thing the reader will tell a friend over dinner. If you can't state it in one sentence, go back to topic selection.
+
+**Design the Emotional Architecture** (see writing-guide.md "Emotional Architecture" section). Choose one of the 5 emotional shapes and map the arc before writing. The article must have a clear emotional peak at 60-70% of the way through.
 
 **Knowledge integration:** If `knowledge_context` contains relevant items, use `youmind-api.js get-material` / `get-craft` to read the full content. Extract facts, data points, and unique perspectives. Attribute naturally within the article. Do NOT copy-paste.
 
-**Hard rules:** Follow the selected framework structure. Apply writing-guide craft principles throughout. H1 title 20–28 characters. Word count 1,500–2,500. No banned words from writing-guide or client blacklist. Place golden quotes at framework-specified positions. Match client voice and tone. Do NOT insert image placeholders (Step 6 handles images).
+**Hard rules:** Follow the selected framework structure. Apply writing-guide craft principles throughout. H1 title 20–28 characters. Word count 1,500–2,500. No banned words from writing-guide or client blacklist. Place golden quotes at framework-specified positions. Match client voice and tone. Apply Chinese Writing Mastery techniques (转折, 对仗不对称, 留白, 口语切入). Do NOT insert image placeholders (Step 6 handles images).
 
-**Self-check (two passes, in this order):**
-1. **Depth Checklist** (writing-guide.md "Depth Architecture" section): Does the article contain at least one genuinely surprising insight? Does it pass the "So What?" ladder to Level 3? Would it still be worth reading if you stripped all the formatting? If not — rewrite the weak sections before polishing.
-2. **Voice Verification** (writing-guide.md Level 4): De-AI check, rhythm, specificity, structural variation.
+**Self-check (three passes, in this order):**
+1. **Depth Checklist** (writing-guide.md "Depth Architecture" section): Does the article hit Level 3 on the "So What?" ladder at least twice? Does it contain at least one genuinely surprising insight? Would it still be worth reading with all formatting stripped?
+2. **Screenshot Test** (writing-guide.md): Is there at least one paragraph good enough to screenshot and send to a friend? If not, the article lacks density — sharpen.
+3. **Voice Verification** (writing-guide.md Level 4): De-AI check, rhythm variation, specificity, structural variation, asymmetric parallelism.
+
+If any self-check fails — **rewrite the weak sections before proceeding**. Do NOT proceed to Step 5 with a shallow draft.
 
 Save to: `{skill_dir}/output/{client}/{YYYY-MM-DD}-{slug}.md`
 
