@@ -23,4 +23,5 @@ export {
 export { createDraft, type DraftResult, type CreateDraftOptions } from './publisher.js';
 export { getAccessToken, uploadImage, uploadThumb } from './wechat-api.js';
 export { latexToSvg, convertMathToHtml, processMathInHtml } from './math-processor.js';
-export { renderMermaidToSvg, processMermaidBlocks, isMermaidAvailable } from './mermaid-processor.js';
+export { renderMermaidToPng, processMermaidBlocks, isMermaidAvailable } from './mermaid-processor.js';
+export { enhanceCodeBlocks } from './code-block-processor.js';

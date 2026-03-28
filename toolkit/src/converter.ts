@@ -81,7 +81,7 @@ export class WeChatConverter {
 
     const $ = cheerio.load(html);
 
-    // Mermaid 图表: 将 ```mermaid 代码块渲染为 SVG 图片
+    // Mermaid 图表: 将 ```mermaid 代码块渲染为 PNG 图片
     processMermaidBlocks($);
 
     // 代码块: macOS 风格 + hljs 语法高亮内联样式
