@@ -23,5 +23,10 @@ reference_accounts: [36氪, 虎嗅, 少数派]
 theme: "simple"
 theme_color: "#3498db"
 
+# YouMind 知识库关联 (可选)
+youmind:
+  source_boards: []          # 素材来源 board ID 列表，用于知识挖掘
+  save_board: ""             # 发布后归档到的 board ID (留空不归档)
+
 cover_style: "简洁科技感，蓝色调，扁平化设计"
 author: "Demo编辑部"

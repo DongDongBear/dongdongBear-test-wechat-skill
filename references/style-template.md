@@ -38,6 +38,11 @@ font_size: ""             # e.g., "16px"
 heading_size: ""          # e.g., "18px"
 paragraph_spacing: ""     # e.g., "1.5em"
 
+# YouMind 知识库关联 (可选 — 需要在 config.yaml 配置 youmind.api_key)
+youmind:
+  source_boards: []          # 素材来源 board ID 列表 (写文章时自动搜索这些 board 中的素材)
+  save_board: ""             # 发布后归档到的 board ID (留空不归档)
+
 cover_style: "Cover image style description for AI image generation"
 author: "Author name displayed on article"
 ```
@@ -77,6 +82,15 @@ This defines WHO is writing. The more specific, the more consistent the output:
 ### `reference_accounts` — Style Calibration
 
 List 2-3 WeChat accounts whose style you want to emulate. The agent uses these as implicit style references when making voice and tone decisions.
+
+### `youmind` — Knowledge Base Integration
+
+Optional. Requires `youmind.api_key` in `config.yaml`.
+
+| Field | Effect |
+|-------|--------|
+| `source_boards` | Agent searches these boards for relevant materials/documents as writing references. Leave empty to search all. |
+| `save_board` | After publishing, the article is archived to this board as a YouMind document. Leave empty to skip. |
 
 ### `blacklist` — Hard Boundaries
 

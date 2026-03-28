@@ -51,12 +51,42 @@ These are non-negotiable. Violating any one means the article has failed:
 Read: {skill_dir}/clients/{client}/style.yaml
 ```
 
-Extract: `topics`, `tone`, `voice`, `blacklist`, `theme`, `theme_color`, `cover_style`, `author`, `content_style`, `font`, `font_size`, `heading_size`, `paragraph_spacing`
+Extract: `topics`, `tone`, `voice`, `blacklist`, `theme`, `theme_color`, `cover_style`, `author`, `content_style`, `font`, `font_size`, `heading_size`, `paragraph_spacing`, `youmind.source_boards`, `youmind.save_board`
 
 **Routing:**
 - Client directory doesn't exist → Tell user to reference `references/style-template.md` to create one. Do NOT create it yourself.
-- User gave a specific topic (e.g., "write about AI Agents") → Skip Steps 2-3, go to Step 3.5
-- User gave raw Markdown for formatting only → Skip Steps 2-6, go to Step 7
+- User gave a specific topic (e.g., "write about AI Agents") → Skip Steps 2-3, go to Step 1.5 → Step 3.5
+- User gave raw Markdown for formatting only → Skip Steps 1.5-6, go to Step 7
+
+### Step 1.5: YouMind Knowledge Mining
+
+> **条件:** `config.yaml` 中配置了 `youmind.api_key` 时执行，否则跳过。
+
+从用户的 YouMind 知识库中挖掘与选题相关的素材，为后续写作提供一手参考材料。
+
+```bash
+cd {skill_dir}/toolkit && npx tsx src/youmind-api.ts mine-topics "{topics_csv}" \
+  --board "{source_board_id}" --top-k 10
+```
+
+其中 `{topics_csv}` 是 `style.yaml` 中 `topics` 数组的逗号拼接（如 `"AI/人工智能,产品设计,创业/商业模式"`），`{source_board_id}` 来自 `style.yaml` 的 `youmind.source_boards`（多个 board 时取第一个；无配置则不传 `--board`，搜索全库）。
+
+**返回结果示例:**
+```json
+[
+  { "source": "search", "id": "abc-123", "title": "我对 AI Agent 的思考", "snippet": "...", "relevance": 0.89 },
+  { "source": "material", "id": "def-456", "title": "Anthropic MCP 协议解读", "snippet": "..." }
+]
+```
+
+**Your task:**
+1. 按 relevance 排序，保留 top 10 条
+2. 将结果暂存为 `knowledge_context`，在 Step 3 选题和 Step 4 写作时使用
+3. 如果结果中有与热点高度相关的素材，在 Step 3 对应选题上加分（+1 "有知识库素材支撑"）
+
+**[Fallback]:** API 失败或无 api_key → 跳过此步，`knowledge_context` 为空，不影响后续流程。
+
+---
 
 ### Step 2: Trending Topic Fetch
 
@@ -68,7 +98,11 @@ Returns JSON with `timestamp`, `sources`, `count`, `items` (each item: `title`, 
 
 **Your task:** Tag each item with its domain and a creatability score (1-10). Filter out items completely unrelated to the client's `topics`.
 
-**[Fallback]:** Script errors or empty → `WebSearch "今日热点 {topics[0]}"` → If still empty, ask user for a topic.
+**[Fallback]:** Script errors or empty → 使用 YouMind webSearch:
+```bash
+cd {skill_dir}/toolkit && npx tsx src/youmind-api.ts web-search "今日热点 {topics[0]}" --freshness day
+```
+→ YouMind webSearch 也失败 → `WebSearch "今日热点 {topics[0]}"` → 全部失败则 ask user for a topic.
 
 ### Step 2.5: Dedup + SEO Data (Parallel)
 
@@ -91,6 +125,8 @@ Read: {skill_dir}/references/topic-selection.md
 ```
 
 Generate **10 topics** using the 4-dimension evaluation model. Each must include all required fields (see topic-selection.md for full spec).
+
+**Knowledge boost:** If `knowledge_context` (from Step 1.5) contains items whose title/snippet matches a candidate topic → auto +1 point + flag "有知识库素材". This rewards topics where the user already has accumulated expertise or source material.
 
 **Dedup rule:** Core keywords overlapping with last 7 days of history → auto -2 points + flag "近期已覆盖"
 
@@ -130,6 +166,15 @@ Read: {skill_dir}/clients/{client}/playbook.md (if exists)
 4. Unique angle — what hasn't been said?
 5. Strongest objection — what's the best counterargument?
 6. One image — what scene captures the essence?
+
+**Knowledge integration:** If `knowledge_context` has items relevant to the selected topic:
+1. Read the full content of the top 3 most relevant items:
+```bash
+cd {skill_dir}/toolkit && npx tsx src/youmind-api.ts get-material "{id}"
+cd {skill_dir}/toolkit && npx tsx src/youmind-api.ts get-craft "{id}"
+```
+2. Use the retrieved content as **source material** — extract facts, data points, unique perspectives, and quotes that enrich the article. Attribute insights naturally (e.g., "我之前整理过一份…", "在研究这个话题时发现…").
+3. Do NOT copy-paste. Transform source material through the client's voice and the article's framework.
 
 **Then write. Hard rules:**
 - Follow the selected framework's structure
@@ -223,19 +268,19 @@ Read: {skill_dir}/references/visual-prompts.md
 
 ```bash
 # 封面
-python3 {skill_dir}/scripts/image_gen.py --prompt "{cover_prompt}" \
+cd {skill_dir}/toolkit && npx tsx src/image-gen.ts --prompt "{cover_prompt}" \
   --output {skill_dir}/output/{client}/{date}-cover.jpg --size cover \
   --color "{theme_color}" --mood "{mood}"
 
 # 内文配图
-python3 {skill_dir}/scripts/image_gen.py --prompt "{image_prompt}" \
+cd {skill_dir}/toolkit && npx tsx src/image-gen.ts --prompt "{image_prompt}" \
   --output {skill_dir}/output/{client}/{date}-img{N}.jpg --size article
 ```
 
 **三级降级策略：**
 
 1. **API 生图成功** → 直接使用
-2. **API 失败或无 API key** → 封面从 `cover/` 目录按颜色匹配预制封面（`--fallback-cover --color "{color}"`）
+2. **API 失败或无 API key** → 封面从 `cover/` 目录按颜色匹配预制封面（`npx tsx src/image-gen.ts --fallback-cover --color "{color}" --output ...`）
 3. **以上都失败** → 输出完整 Prompt 供用户手动生成（可复制到 Nano Banana Pro、Midjourney 等工具），继续 Step 7（纯文字模式）
 
 生成后将图片路径插入 Markdown。
@@ -261,15 +306,16 @@ npx tsx src/cli.ts preview {markdown_path} \
 ```
 Tell user the local HTML path and guide them to manual upload.
 
-### Step 7.5: Write History
+### Step 7.5: Write History + YouMind Archive
 
-Append to `{skill_dir}/clients/{client}/history.yaml`:
+**7.5a. History:** Append to `{skill_dir}/clients/{client}/history.yaml`:
 
 ```yaml
 - date: "YYYY-MM-DD"
   title: "Final title"
-  topic_source: "热点抓取"  # or "用户指定"
+  topic_source: "热点抓取"  # or "用户指定" / "知识库素材"
   topic_keywords: ["keyword1", "keyword2"]
+  knowledge_refs: ["material-id-1"]  # 引用的 YouMind 素材 ID (如有)
   framework: "framework_type"
   word_count: 2000
   media_id: "xxx"
@@ -278,7 +324,16 @@ Append to `{skill_dir}/clients/{client}/history.yaml`:
   stats: null
 ```
 
-**[Fallback]:** Write fails → Warn user to record manually. Do not block the pipeline.
+**7.5b. YouMind Archive:** If `style.yaml` has `youmind.save_board` configured AND `config.yaml` has `youmind.api_key`:
+
+```bash
+cd {skill_dir}/toolkit && npx tsx src/youmind-api.ts save-article "{save_board_id}" \
+  --title "{final_title}" --file "{markdown_path}"
+```
+
+This saves the published article back to the user's YouMind knowledge base for future reference and cross-pollination.
+
+**[Fallback]:** History write or YouMind archive fails → Warn user, do not block the pipeline.
 
 ### Step 8: Final Output
 
@@ -311,13 +366,15 @@ Every step has a fallback (marked `[Fallback]` above). If a step fails AND its f
 
 | Step | Trigger | Fallback |
 |------|---------|----------|
-| Step 2 | Script error / empty | WebSearch → ask user |
+| Step 1.5 | YouMind API error / no key | Skip, `knowledge_context` = empty |
+| Step 2 | Script error / empty | YouMind webSearch → WebSearch → ask user |
 | Step 2.5 | SEO script error | Self-estimate, mark "estimated" |
 | Step 3 | All scores too low | Ask user for manual topic |
 | Step 6b | Image gen error | Output prompts, skip images |
 | Step 7 | API/publish error | Generate local HTML |
-| Step 7.5 | Write failure | Warn, continue |
-| Any script | Python env missing | Tell user: `pip install -r requirements.txt` |
+| Step 7.5a | History write failure | Warn, continue |
+| Step 7.5b | YouMind archive failure | Warn, continue |
+| Python scripts | Python env missing | Tell user: `pip install -r requirements.txt` (only needed for fetch_hotspots.py / seo_keywords.py) |
 | Toolkit | Node env missing | Tell user: `cd toolkit && npm install` |
 
 ---
@@ -336,6 +393,8 @@ Every step has a fallback (marked `[Fallback]` above). If a step fails AND its f
 | 列出所有主题 | Output 4 themes x current color |
 | 新建客户 | Client onboarding flow (see below) |
 | 学习我的修改 | Learn-from-edits flow (see below) |
+| 搜索我的素材 / 看看知识库 | Run YouMind search: `npx tsx src/youmind-api.ts search "{query}"` |
+| 用我的笔记写 / 基于这篇文档 | Read specific material/craft → use as primary source in Step 4 |
 
 ---
 
@@ -369,7 +428,7 @@ npx tsx src/cli.ts colors
 When user asks about article stats ("文章数据怎么样", "效果复盘", "看看表现"):
 
 ```bash
-python3 {skill_dir}/scripts/fetch_stats.py --client {client} --days 7
+cd {skill_dir}/toolkit && npx tsx src/fetch-stats.ts --client {client} --days 7
 ```
 
 After backfilling stats into `history.yaml`, analyze:
@@ -396,7 +455,7 @@ When user says "新建客户" / "import articles" / "build playbook":
 
 ### 2. Generate playbook (requires corpus)
 ```bash
-python3 {skill_dir}/scripts/build_playbook.py --client {client}
+cd {skill_dir}/toolkit && npx tsx src/build-playbook.ts --client {client}
 ```
 Minimum 20 articles recommended. 50+ for robust pattern detection.
 
@@ -405,14 +464,15 @@ Minimum 20 articles recommended. 50+ for robust pattern detection.
 ## Learn From Human Edits
 
 ```bash
-python3 {skill_dir}/scripts/learn_edits.py --client {client} --draft {draft} --final {final}
+cd {skill_dir}/toolkit && npx tsx src/learn-edits.ts --client {client} --draft {draft} --final {final}
 ```
 
 Analyzes diff, categorizes changes (word choice / paragraph deletion / paragraph addition / structure adjustment / title revision / tone shift), writes lessons to `lessons/`.
 
 Every 5 accumulated lessons triggers a playbook refresh:
+
 ```bash
-python3 {skill_dir}/scripts/learn_edits.py --client {client} --summarize
+cd {skill_dir}/toolkit && npx tsx src/learn-edits.ts --client {client} --summarize
 ```
 
 ---
