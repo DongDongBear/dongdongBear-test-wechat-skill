@@ -11,6 +11,7 @@
 |-----------|--------|
 | Polish / shorten / expand / change tone | Edit the article (see writing-guide.md edit section) |
 | Change cover to warm tones | Modify cover prompt, regenerate |
+| Change image style to illustrated / cinematic / minimal / etc. | Re-run Step 6 with the new style direction |
 | Remove the Nth inline image | Remove that image from the Markdown |
 | Rewrite with framework B | Return to Step 4 with the new framework |
 | Switch to a different topic | Return to Step 3, show the topic list |

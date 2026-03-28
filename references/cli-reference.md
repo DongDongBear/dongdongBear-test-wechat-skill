@@ -117,3 +117,12 @@ node dist/learn-edits.js --client {client} --summarize
 # Build playbook from corpus (minimum 20 articles, 50+ recommended)
 node dist/build-playbook.js --client {client}
 ```
+
+---
+
+## Skill Maintenance
+
+```bash
+# Validate the skill's structure, metadata, and documentation links
+python3 ../scripts/validate_skill.py
+```

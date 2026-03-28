@@ -1,14 +1,15 @@
 ---
 name: youmind-wechat-skill
 description: |
-  Use when: user mentions WeChat Official Account (公众号), WeChat article (推文/微信文章),
-  WeChat formatting (微信排版), draft box (草稿箱), topic selection (选题), trending topics (热搜),
-  cover image (封面图), inline images (配图), or a client name + writing task,
-  or "write an article for [brand]", "publish to WeChat", "format for WeChat", "push to drafts".
-  Also covers: article review, theme preview, article stats, client onboarding, style preview,
-  re-publish, edit/polish/condense/expand articles.
-  Does NOT trigger for: generic "write an article" without WeChat context, blog posts,
-  emails, PPT, short video scripts, non-WeChat SEO.
+  Use when the user wants to plan, write, rewrite, format, preview, or publish a
+  WeChat Official Account article. Triggers include: 公众号 / 微信公众号 / 微信文章 / 推文 /
+  草稿箱 / 微信排版 / 选题 / 热搜 / 封面图 / 配图 / 主题预览 / 文章复盘, or requests like
+  "给 [brand] 写一篇公众号文章", "发布到微信草稿箱", "把这篇 Markdown 排版成公众号样式",
+  "根据我的修改学习风格", "创建新的客户配置", "复盘最近文章表现".
+  Also covers: client onboarding, theme preview, article stats review, edit learning,
+  re-publish, polish/condense/expand for WeChat.
+  Do NOT trigger for: generic blog posts, emails/newsletters, PPT, short video scripts,
+  or non-WeChat SEO/content work.
 ---
 
 # YouMind WeChat Skill
@@ -31,6 +32,7 @@ This skill is a folder. Read files on demand — do NOT load everything upfront.
 | `references/theme-dsl.md` | Custom theme design language | When creating custom themes |
 | `references/youmind-integration.md` | Knowledge base API, search, archiving | When using YouMind features |
 | `references/cli-reference.md` | All CLI command syntax | When running toolkit commands |
+| `references/skill-maintenance.md` | Skill self-maintenance, validation, architecture guardrails | When improving or refactoring this skill itself |
 | `references/builtin-themes.json` | CSS examples for 4 built-in themes | When customizing themes |
 | `clients/{client}/style.yaml` | Client brand voice, topics, blacklist, theme | Step 1 (load config) |
 | `clients/{client}/playbook.md` | Client-specific writing rules (if exists) | Step 4 (writing) |
@@ -43,7 +45,7 @@ This skill is a folder. Read files on demand — do NOT load everything upfront.
 
 ## Execution Modes
 
-**Auto (default):** Run Steps 1–8 without stopping. Only pause if a step AND its fallback both fail, required info is missing, or user explicitly asks to pause.
+**Auto (default):** Run Steps 1–5 automatically. Before Step 6 image generation, proactively ask once about image scope and style unless the user already specified them. Then continue through Steps 6–8. Only pause elsewhere if a step AND its fallback both fail, required info is missing, or user explicitly asks to pause.
 
 **Interactive:** Triggered by "interactive mode", "let me choose", "show me the topics/frameworks/themes". Pauses at: topic selection, framework choice, image plan, theme selection. All other steps run automatically.
 
@@ -62,7 +64,8 @@ Non-negotiable. Violating any one means the article has failed:
 7. **Depth over polish.** Run the Depth Checklist (writing-guide.md) before the De-AI pass. If the article's core thesis is something from the top 3 Google results, it needs a rewrite, not a polish.
 8. **Obey the client's `blacklist`** — both words and topics. No exceptions.
 9. **Playbook overrides writing-guide.** If `playbook.md` exists for this client, it takes priority for voice and style decisions.
-10. **Always publish to drafts.** Step 7 publishes directly to WeChat draft box. Do NOT ask — this is mandatory and automatic.
+10. **Before generating visuals, proactively ask about image scope and style.** Do not silently assume. If the host supports `AskUserQuestion`, use it. Otherwise ask a concise plain-text question.
+11. **Always publish to drafts.** Step 7 publishes directly to WeChat draft box. Do NOT ask — this is mandatory and automatic.
 
 ---
 
@@ -111,6 +114,8 @@ Every step has a fallback. If a step AND its fallback both fail, skip that step 
 ## Operations
 
 For post-publish commands (polish, rewrite, change theme, stats review), client onboarding, learn-from-edits, custom themes, and first-run setup, read `references/operations.md`.
+
+If the request is about improving this skill itself, refactoring its structure, or checking for documentation drift, read `references/skill-maintenance.md`.
 
 ---
 

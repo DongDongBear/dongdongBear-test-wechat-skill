@@ -92,7 +92,25 @@ Read `references/visual-prompts.md`.
 
 ### 6a. Ask user about image needs
 
-After writing, ask the user whether they want: cover + inline images (recommended for full visual experience), cover only (quick publish), inline only (already have a cover), or no images (text-only publish). Also ask about style preferences if they have any.
+This question is mandatory unless the user has already specified image scope and style.
+
+Preferred path: use `AskUserQuestion` when the host provides it.
+
+Ask two things:
+
+1. **Image scope**
+   - `cover + inline images` (recommended)
+   - `cover only`
+   - `inline only`
+   - `no images`
+2. **Style direction**
+   - `follow article tone` (recommended default)
+   - or a user-specified look such as illustrated / cinematic / minimal / tech / warm editorial
+
+If `AskUserQuestion` is not available, ask a concise plain-text question that covers the same two decisions.
+
+If the user gives no style direction, default to `follow article tone`.
+If the user says nothing about image scope but still wants visuals, default to `cover + inline images`.
 
 ### 6b. Design prompts
 
@@ -103,7 +121,7 @@ After writing, ask the user whether they want: cover + inline images (recommende
 **Prompt source priority:** User-specified style > Nano Banana Pro library (via `nano-banana-pro-prompts-recommend-skill` if available) > visual-prompts.md patterns > self-designed.
 
 - **Interactive mode:** Show all plans and wait for selection.
-- **Auto mode:** Select Creative A and generate all images.
+- **Auto mode:** After the Step 6a question is answered, select Creative A and generate all images.
 
 ### 6c. Generate images
 

@@ -13,7 +13,14 @@
     "preview": "tsx src/cli.ts preview",
     "publish": "tsx src/cli.ts publish",
     "themes": "tsx src/cli.ts themes",
-    "colors": "tsx src/cli.ts colors"
+    "colors": "tsx src/cli.ts colors",
+    "theme-preview": "tsx src/cli.ts theme-preview",
+    "image-gen": "tsx src/image-gen.ts",
+    "youmind-api": "tsx src/youmind-api.ts",
+    "fetch-stats": "tsx src/fetch-stats.ts",
+    "learn-edits": "tsx src/learn-edits.ts",
+    "build-playbook": "tsx src/build-playbook.ts",
+    "validate-skill": "python3 ../scripts/validate_skill.py"
   },
   "dependencies": {
     "cheerio": "^1.0.0",

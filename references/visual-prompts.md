@@ -7,6 +7,38 @@
 
 ## Cover Image Design
 
+## Image Intake Before Generation
+
+Do not generate images silently. First confirm both:
+
+1. **Whether the user wants images at all**
+2. **What style direction they want**
+
+If the host supports `AskUserQuestion`, use it for a structured intake.
+If not, ask a short plain-text question.
+
+Recommended image-scope options:
+
+- `cover + inline images`
+- `cover only`
+- `inline only`
+- `no images`
+
+Recommended style options:
+
+- `follow article tone`
+- `illustrated`
+- `cinematic`
+- `minimal editorial`
+- `tech / futuristic`
+- `warm human story`
+
+Defaulting rules:
+
+- If the user wants visuals but gives no style, use `follow article tone`.
+- If the user gives a style but not an image scope, ask once for scope before generating.
+- Never infer `no images` just because the user did not mention visuals.
+
 ### 3 Creative Directions
 
 Generate all three. Auto mode selects Creative A. Interactive mode presents all three.
