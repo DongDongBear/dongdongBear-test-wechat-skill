@@ -7,3 +7,9 @@ __pycache__/
 *.pyc
 .env
 .claude/
+.agents/
+.crush/
+.kiro/
+.trae/
+skills/
+skills-lock.json

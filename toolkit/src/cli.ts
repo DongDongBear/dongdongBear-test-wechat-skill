@@ -21,7 +21,9 @@ import {
   type FontFamily,
   type HeadingSize,
   type ParagraphSpacing,
+  type Theme,
   type ThemeKey,
+  type ThemeStyles,
   listPresetColors,
   listThemes,
 } from './theme-engine.js';
@@ -49,6 +51,18 @@ function loadConfig(): Record<string, unknown> {
   return {};
 }
 
+function loadCustomTheme(jsonPath: string): Theme {
+  const raw = JSON.parse(readFileSync(resolve(jsonPath), 'utf-8'));
+  const styles: ThemeStyles = raw.styles ?? raw;
+  return {
+    name: raw.meta?.name ?? 'Custom Theme',
+    key: 'custom' as ThemeKey,
+    description: raw.meta?.description ?? 'Custom theme',
+    color: raw.tokens?.color ?? DEFAULT_COLOR,
+    styles,
+  };
+}
+
 // --- Commands ---
 
 const program = new Command();
@@ -70,6 +84,7 @@ program
   .option('--font-size <n>', 'Body font size (14-18)', '16')
   .option('--heading-size <key>', 'Heading size: minus2, minus1, standard, plus1', 'standard')
   .option('--paragraph-spacing <key>', 'Paragraph spacing: compact, normal, loose', 'normal')
+  .option('--custom-theme <path>', 'Custom theme JSON file path')
   .action(async (input: string, opts) => {
     const converter = new WeChatConverter({
       themeKey: opts.theme as ThemeKey,
@@ -78,6 +93,7 @@ program
       fontSize: parseInt(opts.fontSize),
       headingSize: opts.headingSize as HeadingSize,
       paragraphSpacing: opts.paragraphSpacing as ParagraphSpacing,
+      ...(opts.customTheme ? { customTheme: loadCustomTheme(opts.customTheme) } : {}),
     });
 
     const result = converter.convertFile(input);
@@ -114,6 +130,7 @@ program
   .option('--font-size <n>', 'Body font size (14-18)', '16')
   .option('--heading-size <key>', 'Heading size', 'standard')
   .option('--paragraph-spacing <key>', 'Paragraph spacing', 'normal')
+  .option('--custom-theme <path>', 'Custom theme JSON file path')
   .action(async (input: string, opts) => {
     const cfg = loadConfig();
     const wechatCfg = (cfg.wechat as Record<string, string>) || {};
@@ -136,6 +153,7 @@ program
       fontSize: parseInt(opts.fontSize),
       headingSize: opts.headingSize as HeadingSize,
       paragraphSpacing: opts.paragraphSpacing as ParagraphSpacing,
+      ...(opts.customTheme ? { customTheme: loadCustomTheme(opts.customTheme) } : {}),
     });
 
     const result = converter.convertFile(input);

@@ -35,6 +35,8 @@ export interface ConvertResult {
 export interface ConverterOptions extends ThemeOptions {
   /** 是否显示 YouMind logo 水印 */
   showLogo?: boolean;
+  /** 直接传入自定义主题对象，跳过 generateTheme */
+  customTheme?: Theme;
 }
 
 export class WeChatConverter {
@@ -43,7 +45,7 @@ export class WeChatConverter {
   private showLogo: boolean;
 
   constructor(options: ConverterOptions = {}) {
-    this.theme = generateTheme(options);
+    this.theme = options.customTheme ?? generateTheme(options);
     this.showLogo = options.showLogo ?? false;
     this.md = new MarkdownIt({
       html: true,
