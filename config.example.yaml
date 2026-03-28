@@ -11,8 +11,18 @@ theme: "simple"             # simple | center | decoration | prominent
 theme_color: "#3498db"      # Any HEX color or preset name
 
 # Image generation (for cover & article images)
+# 支持多个 provider，配置了 api_key 的才会启用
+# 优先级: default_provider > 第一个有 key 的 > Nano Banana Pro 库搜索 > 预制封面
 image:
-  provider: "doubao"        # doubao | openai
-  api_key: "your_api_key"
-  # model: "doubao-seedream-5-0-260128"  # optional override
-  # base_url: "https://ark.cn-beijing.volces.com/api/v3"  # optional override
+  default_provider: ""      # gemini | openai | doubao (留空自动选择有 key 的)
+  providers:
+    gemini:                  # Nano Banana Pro / Google Gemini Imagen
+      api_key: ""            # Google AI Studio API key
+      model: "imagen-3.0-generate-002"
+    openai:                  # GPT Image
+      api_key: ""            # OpenAI API key
+      model: "gpt-image-1"
+    doubao:                  # 豆包 Seedream 5.0
+      api_key: ""            # 火山引擎 API key
+      model: "doubao-seedream-5-0-260128"
+      base_url: "https://ark.cn-beijing.volces.com/api/v3"
