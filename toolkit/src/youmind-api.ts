@@ -81,7 +81,8 @@ async function post<T = unknown>(
           'x-api-key': cfg.apiKey,
         },
         body: JSON.stringify(body),
-        signal: AbortSignal.timeout(15_000),
+        // createChat 需要等 AI 响应，给 120s；其他 API 15s 足够
+        signal: AbortSignal.timeout(endpoint.includes('Chat') || endpoint.includes('Message') ? 120_000 : 15_000),
       });
 
       if (!resp.ok) {
@@ -365,6 +366,56 @@ export async function mineTopics(opts: MineTopicsOptions, config?: YouMindConfig
 }
 
 // ---------------------------------------------------------------------------
+// Public API — Chat-based Image Generation
+// ---------------------------------------------------------------------------
+
+export interface ChatImageResult {
+  chatId: string;
+  imageUrls: string[];
+  text: string;
+}
+
+/**
+ * 通过 YouMind Chat API 生成/搜索图片。
+ * AI 会尝试调用生图工具，如不可用则自动联网搜图返回图片链接。
+ */
+export async function chatGenerateImage(
+  prompt: string, config?: YouMindConfig,
+): Promise<ChatImageResult> {
+  const message = `Please generate or find a HIGH RESOLUTION image matching this description. Important: return full-size image URLs, not thumbnails or preview sizes.\n\nImage description: ${prompt}`;
+
+  const resp = await post<Record<string, unknown>>('/createChat', { message }, config);
+
+  const chatId = (resp.id as string) ?? '';
+  const messages = (resp.messages ?? []) as Record<string, unknown>[];
+  const assistant = messages.find(m => m.role === 'assistant');
+
+  const imageUrls: string[] = [];
+  let text = '';
+
+  // Check blocks (newer response format)
+  const blocks = (assistant?.blocks ?? []) as Record<string, unknown>[];
+  for (const block of blocks) {
+    if (block.type === 'content' && block.data) {
+      const data = String(block.data);
+      text += data;
+      for (const m of data.matchAll(/!\[.*?\]\((https?:\/\/[^\s)]+)\)/g)) imageUrls.push(m[1]);
+      for (const m of data.matchAll(/(https?:\/\/[^\s)"]+\.(?:jpg|jpeg|png|webp|gif))/gi)) {
+        if (!imageUrls.includes(m[1])) imageUrls.push(m[1]);
+      }
+    }
+  }
+
+  // Fallback: check content string directly
+  if (!imageUrls.length && typeof assistant?.content === 'string') {
+    text = assistant.content;
+    for (const m of text.matchAll(/!\[.*?\]\((https?:\/\/[^\s)]+)\)/g)) imageUrls.push(m[1]);
+  }
+
+  return { chatId, imageUrls, text };
+}
+
+// ---------------------------------------------------------------------------
 // CLI
 // ---------------------------------------------------------------------------
 
@@ -384,7 +435,8 @@ Commands:
   get-material <id>
   get-craft <id>
   save-article <board_id> --title "..." --file article.md
-  mine-topics "topic1,topic2" [--board <id>] [--top-k N]`);
+  mine-topics "topic1,topic2" [--board <id>] [--top-k N]
+  generate-image "prompt description"`);
     return;
   }
 
@@ -476,6 +528,14 @@ Commands:
         boardIds: boardId ? [boardId] : undefined,
         topK,
       });
+      output(res);
+      break;
+    }
+
+    case 'generate-image': {
+      const prompt = args[1];
+      if (!prompt) { console.error('缺少 prompt 参数'); process.exit(1); }
+      const res = await chatGenerateImage(prompt);
       output(res);
       break;
     }

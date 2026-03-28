@@ -224,35 +224,56 @@ async function generateDoubao(
 type GenerateFn = (prompt: string, apiKey: string, sizeOrRatio: string, model?: string, baseUrl?: string) => Promise<Buffer>;
 
 /**
- * YouMind 生图：尝试多个 base_url（api.youmind.com 有 DNS 问题时自动降级到 youmind.com）
+ * YouMind 生图：通过 Chat API（createChat）调用 AI 生图/搜图能力。
+ * AI 会自动选择可用的生图工具或联网搜索匹配图片。
  */
-const YOUMIND_BASE_URLS = [
-  'https://youmind.com/v1',
-  'https://api.youmind.com/v1',
-];
-
 async function generateYouMind(
-  prompt: string, apiKey: string, size: string,
-  model = 'nano-banana-pro', baseUrl?: string,
+  prompt: string, apiKey: string, _size: string,
+  _model?: string, _baseUrl?: string,
 ): Promise<Buffer> {
-  const urls = baseUrl ? [baseUrl] : YOUMIND_BASE_URLS;
-  let lastError: unknown;
-  for (const base of urls) {
+  // 动态导入 youmind-api 的 chatGenerateImage
+  const { chatGenerateImage } = await import('./youmind-api.js');
+  const result = await chatGenerateImage(prompt);
+
+  if (!result.imageUrls.length) {
+    throw new Error('YouMind Chat 未返回图片 URL');
+  }
+
+  // 尝试获取高清原图 URL（去掉 /thumbnails/ /small/ 等缩略图路径）
+  const fullSizeUrls = result.imageUrls.map(url => {
+    let u = url;
+    // vecteezy: /thumbnails/xxx/small/ → /previews/xxx/
+    u = u.replace('/thumbnails/', '/previews/').replace(/\/small\//, '/');
+    // pexels: ?w=500 → ?w=1280
+    u = u.replace(/[?&]w=\d+/, '?w=1280');
+    // unsplash: ?w=xxx → ?w=1280
+    u = u.replace(/[?&]w=\d+/, '?w=1280');
+    return u;
+  });
+
+  // 下载第一张图片（优先原图，失败则回退到缩略图）
+  const allUrls = [...new Set([...fullSizeUrls, ...result.imageUrls])];
+  for (const url of allUrls) {
     try {
-      return await generateOpenAI(prompt, apiKey, size, model, base);
+      const resp = await httpRetry(url, {}, 1, 30_000);
+      const buf = Buffer.from(await resp.arrayBuffer());
+      if (buf.length > 1024) { // 至少 1KB 才算有效图片
+        console.error(`[INFO] YouMind Chat 返回图片: ${url.slice(0, 80)}... (${(buf.length / 1024).toFixed(1)} KB)`);
+        return buf;
+      }
     } catch (e) {
-      lastError = e;
-      console.error(`[WARN] YouMind 生图 ${base} 失败: ${e}`);
+      console.error(`[WARN] 下载图片失败 ${url.slice(0, 60)}: ${e}`);
     }
   }
-  throw lastError;
+
+  throw new Error(`YouMind Chat 返回了 ${result.imageUrls.length} 个图片 URL 但全部下载失败`);
 }
 
 const GENERATORS: Record<string, GenerateFn> = {
   gemini: (p, k, s, m) => generateGemini(p, k, s, m),
   openai: (p, k, s, m, b) => generateOpenAI(p, k, s, m, b),
   doubao: (p, k, s, m, b) => generateDoubao(p, k, s, m, b),
-  youmind: (p, k, s, m, b) => generateYouMind(p, k, s, m, b),
+  youmind: (p, k, s) => generateYouMind(p, k, s),
 };
 
 // ---------------------------------------------------------------------------
