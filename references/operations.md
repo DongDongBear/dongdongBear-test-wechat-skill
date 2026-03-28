@@ -66,7 +66,7 @@ When needs exceed the 4 built-in themes, escalate through three levels:
 Adjust CLI arguments on built-in themes. Run `cli.js themes` / `cli.js colors` to see options.
 
 **Level 2 — Style-driven customization** (e.g., "tech-futuristic", "literary and clean", "formal business"):
-Read `theme-dsl.md` and generate a custom theme JSON. Reference `builtin-themes.json` for CSS examples. Save to `themes/` and use `--custom-theme`.
+Read `theme-dsl.md` and generate a custom theme JSON. Reference `builtin-themes.json` for CSS examples. Save to `clients/{client}/themes/` and use `--custom-theme`.
 
 **Level 3 — Deep design** (e.g., "design something truly special for this theme"):
 Check if Impeccable is installed (`.claude/skills/frontend-design`). If not, suggest:

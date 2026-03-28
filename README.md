@@ -47,6 +47,7 @@ youmind-wechat-skill/
 │   ├── pipeline.md             # 文章主流程
 │   ├── operations.md           # 运营与维护操作
 │   ├── cli-reference.md        # toolkit 命令参考
+│   ├── openapi-document.md     # YouMind OpenAPI 完整参考
 │   └── skill-maintenance.md    # 仅维护 skill 本身时才读
 ├── scripts/                    # Python: 数据抓取与 skill 自校验
 │   ├── fetch_hotspots.py       # 多平台热点
@@ -65,7 +66,7 @@ youmind-wechat-skill/
 │   └── dist/                   # build 后供 skill 调用的 JS 入口
 ├── clients/                    # 客户配置、历史、语料、经验
 │   └── demo/
-├── themes/                     # 内置/自定义主题
+├── themes/                     # 主题模板（自定义主题存放在 clients/{client}/themes/）
 ├── cover/                      # 预置封面 fallback 资源
 └── output/                     # 生成产物（git 忽略）
 ```

@@ -32,6 +32,9 @@ This skill is a folder. Read files on demand — do NOT load everything upfront.
 | `references/theme-dsl.md` | Custom theme design language | When creating custom themes |
 | `references/youmind-integration.md` | Knowledge base API, search, archiving | When using YouMind features |
 | `references/cli-reference.md` | All CLI command syntax | When running toolkit commands |
+| `references/wechat-constraints.md` | WeChat platform technical limits, safe CSS, size caps | When debugging rendering or format issues |
+| `references/style-template.md` | Client config template with field guide | When onboarding a new client |
+| `references/openapi-document.md` | YouMind OpenAPI full endpoint schemas | When calling YouMind API directly |
 | `references/skill-maintenance.md` | Skill self-maintenance, validation, architecture guardrails | When improving or refactoring this skill itself |
 | `references/builtin-themes.json` | CSS examples for 4 built-in themes | When customizing themes |
 | `clients/{client}/style.yaml` | Client brand voice, topics, blacklist, theme | Step 1 (load config) |

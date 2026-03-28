@@ -107,7 +107,8 @@ clients/{client}/
 ├── history.yaml    # Auto-generated: publishing history + stats
 ├── playbook.md     # Optional: writing manual generated from corpus analysis
 ├── corpus/         # Optional: historical articles for playbook generation
-└── lessons/        # Auto-generated: patterns learned from human edits
+├── lessons/        # Auto-generated: patterns learned from human edits
+└── themes/         # Custom theme JSONs (skill-update safe)
 ```
 
 ### `playbook.md` — When It Exists

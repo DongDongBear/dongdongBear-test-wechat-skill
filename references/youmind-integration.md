@@ -76,7 +76,7 @@ These go beyond what the toolkit CLI wraps. For these, call the YouMind OpenAPI 
 When onboarding a new client, create a dedicated YouMind board to collect their materials:
 
 ```bash
-curl -X POST https://api.youmind.com/openapi/v1/createBoard \
+curl -X POST https://youmind.com/openapi/v1/createBoard \
   -H "Content-Type: application/json" \
   -H "x-api-key: {api_key}" \
   -d '{"name": "WeChat - {client_name}"}'
@@ -89,7 +89,7 @@ Save the returned `id` to `style.yaml` → `youmind.source_boards`.
 When finding useful sources during writing research, clip them to the knowledge base:
 
 ```bash
-curl -X POST https://api.youmind.com/openapi/v1/createMaterialByUrl \
+curl -X POST https://youmind.com/openapi/v1/createMaterialByUrl \
   -H "Content-Type: application/json" \
   -H "x-api-key: {api_key}" \
   -d '{"url": "{source_url}", "board_id": "{board_id}"}'
@@ -100,7 +100,7 @@ curl -X POST https://api.youmind.com/openapi/v1/createMaterialByUrl \
 For a richer archive than `save-article` (which uses plain text), use the Markdown-native endpoint:
 
 ```bash
-curl -X POST https://api.youmind.com/openapi/v1/createDocumentByMarkdown \
+curl -X POST https://youmind.com/openapi/v1/createDocumentByMarkdown \
   -H "Content-Type: application/json" \
   -H "x-api-key: {api_key}" \
   -d '{"board_id": "{board_id}", "title": "{title}", "content": "{markdown_content}"}'
@@ -111,7 +111,7 @@ curl -X POST https://api.youmind.com/openapi/v1/createDocumentByMarkdown \
 Save fleeting ideas, interesting data points, or article seeds as notes:
 
 ```bash
-curl -X POST https://api.youmind.com/openapi/v1/createNote \
+curl -X POST https://youmind.com/openapi/v1/createNote \
   -H "Content-Type: application/json" \
   -H "x-api-key: {api_key}" \
   -d '{"content": "{note_text}", "board_id": "{board_id}", "gen_title": true}'
@@ -122,7 +122,7 @@ curl -X POST https://api.youmind.com/openapi/v1/createNote \
 For targeted research — search only within specific boards, content types, or time ranges:
 
 ```bash
-curl -X POST https://api.youmind.com/openapi/v1/search \
+curl -X POST https://youmind.com/openapi/v1/search \
   -H "Content-Type: application/json" \
   -H "x-api-key: {api_key}" \
   -d '{
@@ -139,7 +139,7 @@ curl -X POST https://api.youmind.com/openapi/v1/search \
 For complex analysis tasks (summarize a board, compare materials, extract themes):
 
 ```bash
-curl -X POST https://api.youmind.com/openapi/v1/createChat \
+curl -X POST https://youmind.com/openapi/v1/createChat \
   -H "Content-Type: application/json" \
   -H "x-api-key: {api_key}" \
   -d '{
@@ -155,7 +155,7 @@ The Chat API has access to all YouMind AI tools including image generation (Nano
 Create recurring tasks that run on a schedule (e.g., weekly digest of new materials):
 
 ```bash
-curl -X POST https://api.youmind.com/openapi/v1/createScheduledTask \
+curl -X POST https://youmind.com/openapi/v1/createScheduledTask \
   -H "Content-Type: application/json" \
   -H "x-api-key: {api_key}" \
   -d '{
@@ -184,7 +184,7 @@ In `config.yaml`:
 ```yaml
 youmind:
   api_key: "sk-ym-xxxxxxxxxxxxxxxxxxxx"   # Required for all YouMind features
-  base_url: "https://api.youmind.com"     # Optional, defaults to this
+  base_url: "https://youmind.com"     # Optional, defaults to this
 ```
 
 In `clients/{client}/style.yaml`:
@@ -204,7 +204,7 @@ All requests require an API key via either header:
 - `x-api-key: sk-ym-xxxxxxxxxxxxxxxxxxxx` (recommended)
 - `Authorization: Bearer sk-ym-xxxxxxxxxxxxxxxxxxxx`
 
-Base URL: `https://api.youmind.com/openapi/v1/`
+Base URL: `https://youmind.com/openapi/v1/`
 
 All endpoints use `POST` with `Content-Type: application/json`.
 
@@ -212,7 +212,7 @@ All endpoints use `POST` with `Content-Type: application/json`.
 
 ## OpenAPI Reference — Full Endpoint List
 
-For complete request/response schemas, see `{skill_dir}/openapi-document.md`.
+For complete request/response schemas, see `{skill_dir}/references/openapi-document.md`.
 
 | # | Endpoint | Description |
 |---|----------|-------------|

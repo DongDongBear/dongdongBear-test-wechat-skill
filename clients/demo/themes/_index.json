@@ -1,0 +1,18 @@
+[
+  {
+    "id": "somber-memorial",
+    "name": "肃穆悼念",
+    "description": "石板灰色调，衬线字体传递庄重感，居中标题搭配细线框营造仪式感，首行缩进呈现文学排版质感，适合悼念、纪念、严肃话题",
+    "tags": ["somber", "memorial", "serif", "restrained", "dignified", "centered"],
+    "createdAt": "2026-03-28",
+    "version": 2
+  },
+  {
+    "id": "tech-futuristic",
+    "name": "科技未来",
+    "description": "深色调科技风格，霓虹蓝主色，锐利边角，代码感装饰线条，适合科技/AI/编程类内容",
+    "tags": ["tech", "futuristic", "neon", "dark-accent", "sharp"],
+    "createdAt": "2026-03-28",
+    "version": 1
+  }
+]

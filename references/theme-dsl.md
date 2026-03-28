@@ -232,7 +232,7 @@
 }
 ```
 
-存储路径：`{skill_dir}/themes/<id>.json`，同时更新 `themes/_index.json` 索引。
+存储路径：`{skill_dir}/clients/{client}/themes/<id>.json`，同时更新 `clients/{client}/themes/_index.json` 索引。
 
 ---
 

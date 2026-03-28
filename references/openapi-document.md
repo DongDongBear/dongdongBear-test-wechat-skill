@@ -46,7 +46,7 @@ sk-ym-xxxxxxxxxxxxxxxxxxxx
 **方式 1：`x-api-key` Header（推荐）**
 
 ```bash
-curl -X POST https://api.youmind.com/openapi/v1/listBoards \
+curl -X POST https://youmind.com/openapi/v1/listBoards \
   -H "Content-Type: application/json" \
   -H "x-api-key: sk-ym-your-api-key" \
   -d '{}'
@@ -55,7 +55,7 @@ curl -X POST https://api.youmind.com/openapi/v1/listBoards \
 **方式 2：`Authorization: Bearer` Header**
 
 ```bash
-curl -X POST https://api.youmind.com/openapi/v1/listBoards \
+curl -X POST https://youmind.com/openapi/v1/listBoards \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer sk-ym-your-api-key" \
   -d '{}'
@@ -68,7 +68,7 @@ curl -X POST https://api.youmind.com/openapi/v1/listBoards \
 ## Base URL
 
 ```
-https://api.youmind.com
+https://youmind.com
 ```
 
 All endpoints are prefixed with `/openapi/v1/`.
@@ -142,7 +142,7 @@ Create a new board.
 **Example:**
 
 ```bash
-curl -X POST https://api.youmind.com/openapi/v1/createBoard \
+curl -X POST https://youmind.com/openapi/v1/createBoard \
   -H "Content-Type: application/json" \
   -H "x-api-key: sk-ym-your-api-key" \
   -d '{
@@ -408,7 +408,7 @@ Create a document from Markdown content. The Markdown will be automatically conv
 **Example:**
 
 ```bash
-curl -X POST https://api.youmind.com/openapi/v1/createDocumentByMarkdown \
+curl -X POST https://youmind.com/openapi/v1/createDocumentByMarkdown \
   -H "Content-Type: application/json" \
   -H "x-api-key: sk-ym-your-api-key" \
   -d '{
@@ -633,7 +633,7 @@ Create a new note.
 **Example:**
 
 ```bash
-curl -X POST https://api.youmind.com/openapi/v1/createNote \
+curl -X POST https://youmind.com/openapi/v1/createNote \
   -H "Content-Type: application/json" \
   -H "x-api-key: sk-ym-your-api-key" \
   -d '{
@@ -930,7 +930,7 @@ Each message in `messages`:
 **Example:**
 
 ```bash
-curl -X POST https://api.youmind.com/openapi/v1/createChat \
+curl -X POST https://youmind.com/openapi/v1/createChat \
   -H "Content-Type: application/json" \
   -H "x-api-key: sk-ym-your-api-key" \
   -d '{
@@ -1067,7 +1067,7 @@ Each step in `steps`:
 **Example:**
 
 ```bash
-curl -X POST https://api.youmind.com/openapi/v1/createSkill \
+curl -X POST https://youmind.com/openapi/v1/createSkill \
   -H "Content-Type: application/json" \
   -H "x-api-key: sk-ym-your-api-key" \
   -d '{
@@ -1172,7 +1172,7 @@ Contains an array of search results, each with relevance score, matched content,
 **Example:**
 
 ```bash
-curl -X POST https://api.youmind.com/openapi/v1/search \
+curl -X POST https://youmind.com/openapi/v1/search \
   -H "Content-Type: application/json" \
   -H "x-api-key: sk-ym-your-api-key" \
   -d '{
@@ -1230,7 +1230,7 @@ Each result in `results`:
 **Example:**
 
 ```bash
-curl -X POST https://api.youmind.com/openapi/v1/webSearch \
+curl -X POST https://youmind.com/openapi/v1/webSearch \
   -H "Content-Type: application/json" \
   -H "x-api-key: sk-ym-your-api-key" \
   -d '{
@@ -1301,7 +1301,7 @@ Create a new scheduled task.
 **Example:**
 
 ```bash
-curl -X POST https://api.youmind.com/openapi/v1/createScheduledTask \
+curl -X POST https://youmind.com/openapi/v1/createScheduledTask \
   -H "Content-Type: application/json" \
   -H "x-api-key: sk-ym-your-api-key" \
   -d '{
@@ -1411,7 +1411,7 @@ Anthropic Messages API compatible endpoint. Accepts identical request/response f
 **Configuration for Claude Code:**
 
 ```bash
-export ANTHROPIC_BASE_URL=https://api.youmind.com/openapi/v1/chat/anthropic
+export ANTHROPIC_BASE_URL=https://youmind.com/openapi/v1/chat/anthropic
 ```
 
 **Request Body:** Standard Anthropic Messages API format:
@@ -1440,7 +1440,7 @@ OpenAI Chat Completions API compatible endpoint. Accepts identical request/respo
 
 ```bash
 # Set base URL to:
-https://api.youmind.com/openapi/v1/chat/openai/v1
+https://youmind.com/openapi/v1/chat/openai/v1
 ```
 
 **Request Body:** Standard OpenAI Chat Completions API format:

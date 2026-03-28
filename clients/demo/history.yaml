@@ -1,7 +1,8 @@
 # Published article history
 # Each entry is automatically appended after successful publishing
 #
-# - date: "2026-03-27"
+# Example entry:
+# - date: "2026-01-15"
 #   title: "文章标题"
 #   topic_source: "热点抓取"
 #   topic_keywords: ["关键词1", "关键词2"]
@@ -11,26 +12,3 @@
 #   theme: "simple"
 #   theme_color: "#3498db"
 #   stats: null
-
-- date: "2026-03-27"
-  title: "中国AI已走在世界前列但你可能误解了背后真正逻辑"
-  topic_source: "热点抓取"
-  topic_keywords: ["人工智能", "中国AI", "大模型", "芯片"]
-  framework: "热点解读型"
-  word_count: 1425
-  media_id: "XOrQnAprkG4hzSmeMj521_1U-Fk8tqrxK9J8OFFHZYaAJnVOI2ic3hKGb7ry1EJf"
-  theme: "simple"
-  theme_color: "#3498db"
-  stats: null
-
-- date: "2026-03-28"
-  title: "罗技一句广告词引爆全网怒火品牌翻车的代价远比你想的大"
-  topic_source: "热点抓取"
-  topic_keywords: ["罗技", "品牌营销", "广告翻车", "公关危机"]
-  framework: "热点解读型"
-  word_count: 1297
-  media_id: "XOrQnAprkG4hzSmeMj52163rLX4I5BnZGLnNp5fjlZb-6Vqh8AHoPvfvNEZcDHst"
-  theme: "decoration"
-  theme_color: "#e74c3c"
-  youmind_id: "019d3012-367c-724f-bd84-ce203e3b85a7"
-  stats: null

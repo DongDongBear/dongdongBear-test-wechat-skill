@@ -33,7 +33,6 @@ interface YouMindConfig {
 
 const YOUMIND_OPENAPI_BASE_URLS = [
   'https://youmind.com/openapi/v1',
-  'https://api.youmind.com/openapi/v1',
 ];
 
 function loadConfig(): YouMindConfig {
