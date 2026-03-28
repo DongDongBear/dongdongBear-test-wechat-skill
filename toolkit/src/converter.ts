@@ -6,10 +6,15 @@
  */
 
 import * as cheerio from 'cheerio';
+import hljs from 'highlight.js';
 import MarkdownIt from 'markdown-it';
+import taskLists from 'markdown-it-task-lists';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
+import { enhanceCodeBlocks } from './code-block-processor.js';
+import { processMathInHtml } from './math-processor.js';
+import { processMermaidBlocks } from './mermaid-processor.js';
 import {
   type FontFamily,
   type HeadingSize,
@@ -45,7 +50,20 @@ export class WeChatConverter {
       breaks: true,
       linkify: true,
       typographer: true,
+      highlight: (str: string, lang: string): string => {
+        // Mermaid 代码块保留原样，后续由 mermaid-processor 处理
+        if (lang === 'mermaid') {
+          return `<pre><code class="language-mermaid">${MarkdownIt().utils.escapeHtml(str)}</code></pre>`;
+        }
+        if (lang && hljs.getLanguage(lang)) {
+          try {
+            return `<pre><code class="hljs language-${lang}">${hljs.highlight(str, { language: lang }).value}</code></pre>`;
+          } catch { /* fallthrough */ }
+        }
+        return `<pre><code class="hljs">${MarkdownIt().utils.escapeHtml(str)}</code></pre>`;
+      },
     });
+    this.md.use(taskLists, { enabled: true, label: true, labelAfter: false });
   }
 
   getTheme(): Theme {
@@ -57,10 +75,23 @@ export class WeChatConverter {
     markdownText = this.stripH1(markdownText);
 
     let html = this.md.render(markdownText);
+
+    // 数学公式: 将 $...$ 和 $$...$$ 转换为 SVG（在 cheerio 之前处理纯文本更可靠）
+    html = processMathInHtml(html);
+
     const $ = cheerio.load(html);
 
-    this.enhanceCodeBlocks($);
+    // Mermaid 图表: 将 ```mermaid 代码块渲染为 SVG 图片
+    processMermaidBlocks($);
+
+    // 代码块: macOS 风格 + hljs 语法高亮内联样式
+    enhanceCodeBlocks($);
+
     const images = this.processImages($);
+
+    // 任务列表: 将 <input> checkbox 转换为微信兼容的样式化 span
+    this.convertTaskListCheckboxes($);
+
     this.applyInlineStyles($);
     this.applyWeChatFixes($);
 
@@ -102,21 +133,6 @@ export class WeChatConverter {
       .join('\n');
   }
 
-  private enhanceCodeBlocks($: cheerio.CheerioAPI): void {
-    $('pre').each((_, pre) => {
-      const code = $(pre).find('code');
-      if (code.length) {
-        const classes = (code.attr('class') || '').split(/\s+/);
-        for (const cls of classes) {
-          if (cls.startsWith('language-')) {
-            $(pre).attr('data-lang', cls.replace('language-', ''));
-            break;
-          }
-        }
-      }
-    });
-  }
-
   private processImages($: cheerio.CheerioAPI): string[] {
     const images: string[] = [];
     $('img').each((_, img) => {
@@ -130,6 +146,29 @@ export class WeChatConverter {
       }
     });
     return images;
+  }
+
+  /**
+   * 将任务列表的 <input> checkbox 转换为样式化的 <span>
+   * 微信公众号不支持 <input> 元素
+   */
+  private convertTaskListCheckboxes($: cheerio.CheerioAPI): void {
+    const s = this.theme.styles;
+    const accentColor = s.taskListItemCheckbox?.match(/accent-color:\s*([^;]+)/)?.[1]?.trim() || this.theme.color;
+
+    $('.task-list-item-checkbox').each((_, elem) => {
+      const isChecked = $(elem).is('[checked]');
+
+      if (isChecked) {
+        $(elem).replaceWith(
+          `<span style="display: inline-block; width: 16px; height: 16px; margin-right: 8px; background-color: ${accentColor}; color: #ffffff; border-radius: 3px; text-align: center; line-height: 16px; font-size: 13px; font-weight: bold; vertical-align: middle;">&#10003;</span>`
+        );
+      } else {
+        $(elem).replaceWith(
+          `<span style="display: inline-block; width: 16px; height: 16px; margin-right: 8px; background-color: #ffffff; border: 1.5px solid #d1d5db; border-radius: 3px; text-align: center; line-height: 16px; font-size: 13px; vertical-align: middle;">&nbsp;</span>`
+        );
+      }
+    });
   }
 
   private applyInlineStyles($: cheerio.CheerioAPI): void {
@@ -150,9 +189,6 @@ export class WeChatConverter {
       del: s.strike,
       u: s.u,
       a: s.a,
-      ul: s.ul,
-      ol: s.ol,
-      li: s.li,
       blockquote: s.blockquote,
       code: s.code,
       hr: s.hr,
@@ -168,22 +204,44 @@ export class WeChatConverter {
         // 代码块内的 code 单独处理
         if (tag === 'code' && $(elem).parent('pre').length) return;
 
+        // 代码块内的 p/span 等不应用全局样式，避免覆盖代码高亮
+        if ($(elem).closest('pre[data-codeblock]').length) return;
+
         const existing = $(elem).attr('style') || '';
         $(elem).attr('style', existing ? `${existing}; ${style}` : style);
       });
     }
 
-    // 代码块: pre > code
-    $('pre').each((_, pre) => {
-      const code = $(pre).find('code');
-      if (code.length) {
-        $(pre).attr('style', s.codeBlockPre);
-        code.attr('style', s.codeBlockCode);
+    // 列表: 区分普通列表和任务列表
+    $('ul').each((_, elem) => {
+      if ($(elem).hasClass('contains-task-list')) {
+        $(elem).attr('style', s.taskList);
       } else {
-        const existing = $(pre).attr('style') || '';
-        if (!existing) {
-          $(pre).attr('style', s.pre);
-        }
+        const existing = $(elem).attr('style') || '';
+        $(elem).attr('style', existing ? `${existing}; ${s.ul}` : s.ul);
+      }
+    });
+
+    $('ol').each((_, elem) => {
+      const existing = $(elem).attr('style') || '';
+      $(elem).attr('style', existing ? `${existing}; ${s.ol}` : s.ol);
+    });
+
+    $('li').each((_, elem) => {
+      if ($(elem).hasClass('task-list-item')) {
+        $(elem).attr('style', s.taskListItem);
+      } else {
+        const existing = $(elem).attr('style') || '';
+        $(elem).attr('style', existing ? `${existing}; ${s.li}` : s.li);
+      }
+    });
+
+    // 代码块样式已由 code-block-processor 处理（macOS 风格 + hljs 高亮）
+    // 仅处理没有被增强的 pre 标签（纯 HTML pre）
+    $('pre').each((_, pre) => {
+      const existing = $(pre).attr('style') || '';
+      if (!existing) {
+        $(pre).attr('style', s.pre);
       }
     });
 
@@ -198,8 +256,9 @@ export class WeChatConverter {
   private applyWeChatFixes($: cheerio.CheerioAPI): void {
     const textColor = '#333333';
 
-    // 确保所有 p 标签有显式颜色
+    // 确保所有 p 标签有显式颜色（跳过代码块内的）
     $('p').each((_, p) => {
+      if ($(p).closest('pre[data-codeblock]').length) return;
       const style = $(p).attr('style') || '';
       if (!style.includes('color')) {
         $(p).attr('style', style ? `${style}; color: ${textColor}` : `color: ${textColor}`);
