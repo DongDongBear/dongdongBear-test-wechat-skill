@@ -159,6 +159,8 @@ Insert generated image paths into the Markdown file.
 
 ### Step 7: Format + Publish
 
+**Always publish directly to WeChat drafts. Do NOT ask the user whether to publish — this step is mandatory and automatic.**
+
 Use `cli.js publish` with theme and color from style.yaml (or user override). For custom themes, use `--custom-theme`. Include `--cover` only if a cover image exists.
 
 **[Fallback]:** Publish fails → generate a local HTML preview with `cli.js preview` and tell user the file path.
