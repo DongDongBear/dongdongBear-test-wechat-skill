@@ -376,43 +376,68 @@ export interface ChatImageResult {
 }
 
 /**
- * 通过 YouMind Chat API 生成/搜索图片。
- * AI 会尝试调用生图工具，如不可用则自动联网搜图返回图片链接。
+ * 通过 YouMind Chat API (agent 模式) AI 生图。
+ * 流程: createChat(agent) → agent 自动加载 imageGenerate 工具并生图
+ *       → 轮询 listMessages 等待 cdn.gooo.ai 图片 URL 出现。
  */
 export async function chatGenerateImage(
   prompt: string, config?: YouMindConfig,
 ): Promise<ChatImageResult> {
-  const message = `Please generate or find a HIGH RESOLUTION image matching this description. Important: return full-size image URLs, not thumbnails or preview sizes.\n\nImage description: ${prompt}`;
+  const cfg = config ?? loadConfig();
 
-  const resp = await post<Record<string, unknown>>('/createChat', { message }, config);
+  // Step 1: createChat 以 agent 模式启动
+  const createResp = await post<Record<string, unknown>>('/createChat', {
+    message: `请加载生图工具并生成一张图片：${prompt}`,
+    message_mode: 'agent',
+  }, cfg);
 
-  const chatId = (resp.id as string) ?? '';
-  const messages = (resp.messages ?? []) as Record<string, unknown>[];
-  const assistant = messages.find(m => m.role === 'assistant');
+  const chatId = (createResp.id as string) ?? '';
+  if (!chatId) throw new Error('createChat 未返回 chat_id');
 
-  const imageUrls: string[] = [];
-  let text = '';
+  // 先检查 createChat 响应是否已经包含生成的图
+  let imageUrls = extractImageUrls(createResp);
+  if (imageUrls.length) {
+    return { chatId, imageUrls, text: '' };
+  }
 
-  // Check blocks (newer response format)
-  const blocks = (assistant?.blocks ?? []) as Record<string, unknown>[];
-  for (const block of blocks) {
-    if (block.type === 'content' && block.data) {
-      const data = String(block.data);
-      text += data;
-      for (const m of data.matchAll(/!\[.*?\]\((https?:\/\/[^\s)]+)\)/g)) imageUrls.push(m[1]);
-      for (const m of data.matchAll(/(https?:\/\/[^\s)"]+\.(?:jpg|jpeg|png|webp|gif))/gi)) {
-        if (!imageUrls.includes(m[1])) imageUrls.push(m[1]);
-      }
+  // Step 2: 轮询 listMessages 等待图片生成完成（最多 120 秒）
+  const maxWait = 120_000;
+  const interval = 3_000;
+  const start = Date.now();
+
+  while (Date.now() - start < maxWait) {
+    await new Promise(r => setTimeout(r, interval));
+
+    const msgResp = await post<Record<string, unknown>>('/listMessages', { chat_id: chatId }, cfg);
+    imageUrls = extractImageUrls(msgResp);
+    if (imageUrls.length) {
+      return { chatId, imageUrls, text: '' };
+    }
+
+    // 检查 agent 是否已结束（所有 message status != pending）
+    const messages = (msgResp.messages ?? []) as Record<string, unknown>[];
+    const lastAst = [...messages].reverse().find(m => m.role === 'assistant');
+    if (lastAst && lastAst.status === 'success') {
+      // agent 已完成但没有生成图片
+      break;
     }
   }
 
-  // Fallback: check content string directly
-  if (!imageUrls.length && typeof assistant?.content === 'string') {
-    text = assistant.content;
-    for (const m of text.matchAll(/!\[.*?\]\((https?:\/\/[^\s)]+)\)/g)) imageUrls.push(m[1]);
+  throw new Error('YouMind AI 生图超时或未生成图片');
+}
+
+/** 从 chat 响应的所有 messages/blocks 中提取 AI 生成的图片 URL (cdn.gooo.ai) */
+function extractImageUrls(resp: Record<string, unknown>): string[] {
+  const urls: string[] = [];
+  const seen = new Set<string>();
+  const raw = JSON.stringify(resp);
+
+  // 只匹配 cdn.gooo.ai 的 AI 生成图片，不要搜索来的图
+  for (const m of raw.matchAll(/https?:\/\/cdn\.gooo\.ai\/gen-images\/[a-f0-9]+\.(?:jpg|jpeg|png|webp)/gi)) {
+    if (!seen.has(m[0])) { seen.add(m[0]); urls.push(m[0]); }
   }
 
-  return { chatId, imageUrls, text };
+  return urls;
 }
 
 // ---------------------------------------------------------------------------
