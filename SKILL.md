@@ -168,31 +168,77 @@ Overwrite the file with the optimized version.
 Read: {skill_dir}/references/visual-prompts.md
 ```
 
-#### 6a. Analysis + Plan
+#### 6a. 询问配图方案
 
-Analyze the final draft paragraph by paragraph:
-- Identify which paragraphs need images (data/scene/climax = yes, opinion/opening/CTA = no)
-- Determine positions, ensuring ≥300 char spacing, total 3-6 images
-- Generate: 3 cover creative directions + in-article image prompts
+**写完文章后，必须主动询问用户：**
 
-- **Auto mode:** Use Creative A for cover. Generate all images. Continue.
-- **Interactive mode:** Present the plan. Wait for confirmation.
+```
+文章已完成！需要为这篇文章配图吗？
 
-#### 6b. Generate Images
+1️⃣  封面 + 内文配图（推荐，完整视觉体验）
+2️⃣  仅封面（快速发布）
+3️⃣  仅内文配图（已有封面）
+4️⃣  不需要配图（纯文字发布）
 
-```bash
-# Cover
-python3 {skill_dir}/scripts/image_gen.py --prompt "{cover_prompt}" \
-  --output {skill_dir}/output/{client}/{date}-cover.png --size cover
-
-# In-article images
-python3 {skill_dir}/scripts/image_gen.py --prompt "{image_prompt}" \
-  --output {skill_dir}/output/{client}/{date}-img{N}.png --size article
+另外，如果你有偏好的图片风格，可以告诉我，比如：
+- "科技感、深色背景"
+- "温暖插画风"
+- "扁平设计、简洁"
 ```
 
-Insert actual image paths into the Markdown, replacing any placeholder references.
+用户回复后按选择执行。如果用户未指定风格，根据文章内容自动判断。
 
-**[Fallback]:** image_gen.py errors → Output complete prompts for user to generate manually. Continue to Step 7 without images.
+#### 6b. 分析 + Prompt 设计
+
+**封面：生成 3 套创意方案**（按 visual-prompts.md 的 Creative A/B/C）
+
+每套方案包含：
+- 创意方向描述（1 句话）
+- 完整英文 Prompt（必须包含 `no text, no letters, no words`）
+- 匹配的颜色方案
+
+**内文配图：逐段分析文章**
+
+| 段落类型 | 是否配图 | 原因 |
+|---------|---------|------|
+| 数据/证据段 | 是 | 可视化数据 |
+| 场景/叙事段 | 是 | 给读者画面感 |
+| 转折/高潮段 | 是 | 放大情绪冲击 |
+| 纯观点段 | 否 | 让文字说话 |
+| 开头段 | 否 | 不打断钩子 |
+| CTA/结尾段 | 否 | 聚焦行动 |
+
+间距规则：相邻配图之间 ≥ 300 字，全文 3-6 张。
+
+**Prompt 来源优先级：**
+1. 用户指定的风格偏好
+2. Nano Banana Pro Prompt 库（如可用，调用 `nano-banana-pro-prompts-recommend-skill` 获取相关风格 prompt 作为参考模板）
+3. visual-prompts.md 的 Prompt Pattern 模板
+4. 根据文章内容自行设计
+
+- **交互模式**：展示 3 套封面方案 + 配图位置表，等用户选择
+- **自动模式**：选 Creative A，全部生成
+
+#### 6c. 生成图片
+
+```bash
+# 封面
+python3 {skill_dir}/scripts/image_gen.py --prompt "{cover_prompt}" \
+  --output {skill_dir}/output/{client}/{date}-cover.jpg --size cover \
+  --color "{theme_color}" --mood "{mood}"
+
+# 内文配图
+python3 {skill_dir}/scripts/image_gen.py --prompt "{image_prompt}" \
+  --output {skill_dir}/output/{client}/{date}-img{N}.jpg --size article
+```
+
+**三级降级策略：**
+
+1. **API 生图成功** → 直接使用
+2. **API 失败或无 API key** → 封面从 `cover/` 目录按颜色匹配预制封面（`--fallback-cover --color "{color}"`）
+3. **以上都失败** → 输出完整 Prompt 供用户手动生成（可复制到 Nano Banana Pro、Midjourney 等工具），继续 Step 7（纯文字模式）
+
+生成后将图片路径插入 Markdown。
 
 ### Step 7: Format + Publish to Drafts
 
