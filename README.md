@@ -1,106 +1,125 @@
 # YouMind WeChat Skill
 
-微信公众号全流程 Agent Skill：热点抓取 → 选题 → 写作 → SEO → 视觉AI → 排版发布。
+微信公众号 AI Skill。对 Agent 说一句话，自动跑完选题、写作、配图、排版、发布到草稿箱。
 
-## 核心特性
+<!-- TODO: hero 截图 -->
 
-- **动态主题引擎**：4 主题 × 无限色，运行时生成微信内联 CSS
-- **TypeScript Toolkit**：cheerio + markdown-it，比 Python 更好的 HTML 处理
-- **全自动流程**：从热点到草稿箱，一口气完成
-- **智能降级**：每步都有 fallback，不会因单步失败停止
-- **自校验机制**：校验 skill 元数据、文档、命令入口和目录结构是否漂移
+---
 
-## 快速开始
+## 一句话能干嘛
+
+| 你说 | Skill 做 |
+|------|----------|
+| `给 demo 写一篇公众号文章` | 全自动 8 步：热点 → 选题 → 写作 → SEO → 配图 → 排版 → 发到草稿箱 |
+| `写一篇关于高考志愿的文章` | 跳过热点，直接围绕指定主题走流程 |
+| `把这篇 Markdown 发到草稿箱` | 跳过写作，直接排版发布 |
+| `用紫色 decoration 主题预览` | 换主题换色，即时预览 |
+| `看看最近 7 天文章表现` | 拉数据、分析 top/flop、给下一篇建议 |
+| `根据我的修改学习风格` | 从你的人工改稿中提取经验，下次写得更像你 |
+| `创建新客户 my-brand` | 自动建目录、引导填品牌配置 |
+
+---
+
+## 安装
+
+> 环境要求：Node.js ≥ 18、Python ≥ 3.9、已认证微信公众号（需 API 权限）
 
 ```bash
-# 1. 安装 toolkit 依赖
-cd toolkit && npm install
-
-# 2. 构建 deterministic toolkit commands
-npm run build
-
-# 3. 安装 Python scripts 依赖
-cd ..
+# 1. 安装依赖
+cd toolkit && npm install && npm run build && cd ..
 pip install -r requirements.txt
 
-# 4. 配置
+# 2. 生成配置文件（如果 config.yaml 不存在）
 cp config.example.yaml config.yaml
-# 编辑 config.yaml 填入 WeChat API 凭证
 
-# 5. 获取本机公网 IP 并添加到微信 IP 白名单
+# 3. 获取公网 IP（填入微信 IP 白名单，否则无法发布）
 curl -s https://httpbin.org/ip | python3 -c "import sys,json; print(json.load(sys.stdin)['origin'])"
-# 将输出的 IP 填入：mp.weixin.qq.com → 设置与开发 → 基本配置 → IP 白名单
-
-# 6. 校验 skill 结构和文档是否一致
-cd toolkit && npm run validate-skill
-
-# 7. 预览
-node dist/cli.js preview ../article.md --theme decoration --color "#9b59b6"
-
-# 8. 发布
-node dist/cli.js publish ../article.md --theme simple --color "#3498db"
 ```
 
-## 项目结构
+`config.yaml` 需要填写以下凭证：
+
+| 字段 | 必填 | 说明 |
+|------|------|------|
+| `wechat.appid` | **是** | 微信公众号 AppID |
+| `wechat.secret` | **是** | 微信公众号 AppSecret |
+| `wechat.author` | 否 | 文章作者名，默认 "YouMind" |
+| `youmind.api_key` | 推荐 | 用于知识库搜索、联网搜索、文章归档、AI 生图 |
+| `image.providers.*.api_key` | 否 | 配了哪个就启用哪个（youmind / gemini / openai / doubao） |
+
+IP 白名单配置路径：[mp.weixin.qq.com](https://mp.weixin.qq.com) → 设置与开发 → 基本配置 → IP 白名单。家庭宽带 IP 会变，发布报 IP 错误时重新获取并更新即可。
+
+---
+
+## 使用技巧
+
+### 两种运行模式
+
+- **自动模式**（默认）：全程自动跑，只在生成配图前问一次图片风格偏好
+- **交互模式**：说"让我来选题" / "交互模式"，会在选题、框架、配图、主题环节暂停让你选
+
+### 主题系统
+
+4 款内置主题，搭配任意 HEX 色值：
+
+| 主题 | 风格 | 适合 |
+|------|------|------|
+| `simple` | 简约干净 | 日常推送、知识科普 |
+| `center` | 居中排版 | 短篇、金句、情感 |
+| `decoration` | 装饰线条 | 品牌感强的内容 |
+| `prominent` | 大标题 | 深度长文、观点输出 |
+
+<!-- TODO: 主题对比截图 -->
+
+想要更深的定制？用 Theme DSL 写一个自定义主题 JSON，放到 `clients/{client}/themes/` 下，发布时加 `--custom-theme` 即可。
+
+### 配图降级链
+
+Skill 按以下顺序尝试生成配图，任何一环成功就继续，全挂也不中断流程：
 
 ```
-youmind-wechat-skill/
-├── SKILL.md                    # Agent Skill 定义（触发条件 + 主流程）
-├── agents/openai.yaml          # UI / marketplace 元数据
-├── references/                 # 渐进式披露的参考文档
-│   ├── pipeline.md             # 文章主流程
-│   ├── operations.md           # 运营与维护操作
-│   ├── cli-reference.md        # toolkit 命令参考
-│   ├── openapi-document.md     # YouMind OpenAPI 完整参考
-│   └── skill-maintenance.md    # 仅维护 skill 本身时才读
-├── scripts/                    # Python: 数据抓取与 skill 自校验
-│   ├── fetch_hotspots.py       # 多平台热点
-│   ├── seo_keywords.py         # SEO 关键词分析
-│   └── validate_skill.py       # 结构/文档一致性校验
-├── toolkit/                    # TypeScript toolkit 与 deterministic entrypoints
-│   ├── src/
-│   │   ├── cli.ts              # 预览 / 发布 / 主题命令
-│   │   ├── converter.ts        # Markdown → WeChat HTML
-│   │   ├── theme-engine.ts     # 主题系统
-│   │   ├── image-gen.ts        # 封面与配图生成
-│   │   ├── youmind-api.ts      # YouMind 知识库与搜索
-│   │   ├── fetch-stats.ts      # 微信文章数据回收
-│   │   ├── build-playbook.ts   # 从历史语料生成 playbook
-│   │   └── learn-edits.ts      # 从人工修改里抽取经验
-│   └── dist/                   # build 后供 skill 调用的 JS 入口
-├── clients/                    # 客户配置、历史、语料、经验
-│   └── demo/
-├── themes/                     # 主题模板（自定义主题存放在 clients/{client}/themes/）
-├── cover/                      # 预置封面 fallback 资源
-└── output/                     # 生成产物（git 忽略）
+AI 生图（你配的 provider）→ Nano Banana Pro 图库搜索 → 预制封面匹配 → 只输出 prompt
 ```
 
-## 常用命令
+### 多客户管理
 
-所有命令都在 `toolkit/` 下运行：
+每个客户一个目录，互不干扰：
 
-```bash
-cd toolkit
-
-# 核心流程
-npm run preview -- ../article.md --theme simple --color "#3498db"
-npm run publish -- ../article.md --theme decoration --color "#9b59b6"
-npm run theme-preview -- ../article.md --color "#3498db"
-
-# 配套工具
-npm run image-gen -- --search "AI 教育 插画"
-npm run youmind-api -- search "高考 志愿"
-npm run fetch-stats -- --client demo --days 7
-npm run build-playbook -- --client demo
-npm run learn-edits -- --client demo --summarize
-
-# Skill 自校验
-npm run validate-skill
+```
+clients/demo/
+├── style.yaml      # 品牌调性、目标读者、禁用词
+├── playbook.md     # 写作手册（自动生成或手写）
+├── history.yaml    # 已发布记录（去重用）
+├── corpus/         # 历史语料
+├── lessons/        # 人工改稿经验
+└── themes/         # 专属主题
 ```
 
-## 架构说明
+对 Agent 说 `创建新客户 xxx` 即可自动初始化。
 
-- `SKILL.md` 只保留高频执行流程和关键护栏，详细规范下沉到 `references/`，符合渐进式披露。
-- 高风险或高重复步骤尽量走 `toolkit/src/*.ts` / `scripts/*.py`，减少靠 prompt 复述命令。
-- `agents/openai.yaml` 负责分发层元数据，避免把 UI 信息混进主 skill prompt。
-- `scripts/validate_skill.py` 用来阻止 `README`、`SKILL.md`、命令入口和文件布局继续漂移。
+### 让文章越写越像你
+
+1. **喂语料**：往 `clients/{client}/corpus/` 里放 20+ 篇你的历史文章，跑 `build-playbook` 生成写作手册
+2. **改稿学习**：发布后手动改，然后说"根据我的修改学习风格"——Skill 会提取差异存到 `lessons/`
+3. **手册迭代**：每积累 5 条经验，自动刷新 `playbook.md`
+
+### 流程不会断
+
+每一步都有 fallback。热点抓不到就联网搜，联网搜也挂就问你；图生不出来就搜图库；发布失败就生成本地 HTML。单步失败只会跳过并标注，不会卡死。
+
+---
+
+## 常见问题
+
+**发布报 IP 错误** — 公网 IP 变了。重跑 `curl -s https://httpbin.org/ip | python3 -c "import sys,json; print(json.load(sys.stdin)['origin'])"` 拿新 IP，更新微信白名单。
+
+**图片生成失败** — 不影响发布。Skill 会自动走降级链。想用特定 provider 就在 `config.yaml` 里填对应 key。
+
+**文章有 AI 味** — 在 `style.yaml` 里写清楚你的调性；多喂历史语料建 playbook；发布后改稿再跑"学习风格"。三管齐下效果最好。
+
+**怎么自定义排版？** — 三个层级：① 对话里指定颜色字号 → ② 写 Theme DSL JSON → ③ 搭配设计类 Skill 深度定制。
+
+---
+
+## 许可证
+
+MIT
